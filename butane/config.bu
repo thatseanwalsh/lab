@@ -1,8 +1,8 @@
 variant: fcos
-version: 1.5.0
+version: 1.7.0
 
 # ============================================================
-# Fedora CoreOS — Netbird Server Node
+# Fedora CoreOS
 #
 # This file contains no secrets and is safe to commit publicly.
 # All key material is derived on-device and unlocked only after boot.
@@ -16,8 +16,8 @@ version: 1.5.0
 #
 # After first boot, capture the host age public key and encrypt secrets:
 #   journalctl -u coreos-tpm-enroll | grep AGE_PUBLIC_KEY
-#   sops --encrypt secrets/netbird.env > secrets/netbird.env.enc
-#   git add .sops.yaml secrets/netbird.env.enc && git commit && git push
+#   sops --encrypt secrets/example.env > secrets/example.env.enc
+#   git add .sops.yaml secrets/example.env.enc && git commit && git push
 # ============================================================
 
 passwd:
@@ -64,13 +64,13 @@ storage:
       contents:
         local: scripts/gitops-sync.sh
 
-    # ── TPM enroll script ────────────────────────────────────────────────
+    # ── TPM enroll script ──────────────────────────-──────────────────────
     - path: /usr/local/bin/tpm-enroll.sh
       mode: 0750
       contents:
         local: scripts/tpm-enroll.sh
 
-    # ── firewalld: public zone — restrictive default ----------------------
+    # ── firewalld: public zone — restrictive default ──────────────────────
     # This file is managed by gitops; edit firewalld/public.xml in the repo.
     # It is also placed here so firewalld is configured correctly from the
     # very first boot, before gitops runs.
