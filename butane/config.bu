@@ -46,6 +46,8 @@ storage:
       mode: 0750
     - path: /run/secrets
       mode: 0700
+    - path: /etc/age
+      mode: 448
 
   files:
     # ── gitops env ────────────────────────────────────────────────────────
@@ -144,16 +146,7 @@ systemd:
         [Service]
         Type=oneshot
         RemainAfterExit=yes
-        ExecStart=/bin/bash -c '\
-          firewall-cmd --reload && \
-          firewall-cmd --permanent --add-service=https && \
-          firewall-cmd --permanent --add-service=http && \
-          firewall-cmd --permanent --add-port=443/udp && \
-          firewall-cmd --permanent --add-port=3478/udp && \
-          firewall-cmd --permanent --add-port=49152-65535/udp && \
-          firewall-cmd --permanent --add-service=ssh && \
-          firewall-cmd --reload && \
-          touch /var/lib/.firewalld-configured'
+        ExecStart=/bin/bash -c 'firewall-cmd --reload && firewall-cmd --permanent --add-service=https && firewall-cmd --permanent --add-service=http && firewall-cmd --permanent --add-port=443/udp && firewall-cmd --permanent --add-port=3478/udp && firewall-cmd --permanent --add-port=49152-65535/udp && firewall-cmd --permanent --add-service=ssh && firewall-cmd --reload && touch /var/lib/.firewalld-configured'
         StandardOutput=journal
         StandardError=journal
 
@@ -172,10 +165,7 @@ systemd:
 
         [Service]
         Type=oneshot
-        ExecStart=/usr/bin/bash -lc '
-          UUID=$(cat /sys/class/dmi/id/product_uuid 2>/dev/null || cat /etc/machine-id) && \
-          HASH=$(echo -n "$UUID" | sha256sum | cut -c1-3) && \
-          /usr/bin/hostnamectl set-hostname "$HASH"'
+        ExecStart=/usr/bin/bash -lc 'UUID=$(cat /sys/class/dmi/id/product_uuid 2>/dev/null || cat /etc/machine-id); HASH=$(echo -n "$UUID" | sha256sum | cut -c1-3); hostnamectl set-hostname "$HASH"'
         ExecStartPost=/usr/bin/touch /var/lib/.hostname-derived
         StandardOutput=journal
         StandardError=journal
