@@ -27,7 +27,6 @@ passwd:
         - sk-ssh-ed25519@openssh.com AAAAGnNrLXNzaC1lZDI1NTE5QG9wZW5zc2guY29tAAAAIIzbSZ+dMH+iUs1fWb9St9hzPBnc2IJ0769cCgoWlP8oAAAABHNzaDo
       groups:
         - wheel
-        - sudo
 
 storage:
   directories:
@@ -145,22 +144,16 @@ systemd:
         [Service]
         Type=oneshot
         RemainAfterExit=yes
-        # Ensure we start from the zone file we laid down
-        ExecStart=firewall-cmd --reload
-        # HTTPS + HTTP for Caddy (TLS termination + ACME HTTP-01)
-        ExecStart=firewall-cmd --permanent --add-service=https
-        ExecStart=firewall-cmd --permanent --add-service=http
-        # QUIC / HTTP3
-        ExecStart=firewall-cmd --permanent --add-port=443/udp
-        # STUN (Netbird / TURN discovery)
-        ExecStart=firewall-cmd --permanent --add-port=3478/udp
-        # TURN relay port range
-        ExecStart=firewall-cmd --permanent --add-port=49152-65535/udp
-        # SSH (keep this unless you want lockout)
-        ExecStart=firewall-cmd --permanent --add-service=ssh
-        # Apply permanent rules to runtime
-        ExecStart=firewall-cmd --reload
-        ExecStart=/bin/touch /var/lib/.firewalld-configured
+        ExecStart=/bin/bash -c '\
+          firewall-cmd --reload && \
+          firewall-cmd --permanent --add-service=https && \
+          firewall-cmd --permanent --add-service=http && \
+          firewall-cmd --permanent --add-port=443/udp && \
+          firewall-cmd --permanent --add-port=3478/udp && \
+          firewall-cmd --permanent --add-port=49152-65535/udp && \
+          firewall-cmd --permanent --add-service=ssh && \
+          firewall-cmd --reload && \
+          touch /var/lib/.firewalld-configured'
         StandardOutput=journal
         StandardError=journal
 
@@ -210,7 +203,7 @@ systemd:
         WantedBy=multi-user.target
 
     # ── Unseal age key at every boot via systemd-creds ────────────────────────
-    # Reads /etc/age/%h.identity.secure (TPM2-sealed by tpm-enroll.sh).
+    # Reads /etc/age/%H.identity.secure (TPM2-sealed by tpm-enroll.sh).
     # Writes /run/age.key (mode 0400, tmpfs, gone on reboot).
     # gitops-sync.service Requires= this, so the key is always ready first.
     - name: tpm-unseal-age.service
@@ -219,15 +212,13 @@ systemd:
         [Unit]
         Description=Unseal age identity key via TPM2 (systemd-creds)
         After=local-fs.target coreos-tpm-enroll.service
-        ConditionPathExists=/etc/age/%h.identity.secure
+        ConditionPathExists=/etc/age/%H.identity.secure
         Before=gitops-sync.service
 
         [Service]
         Type=oneshot
         RemainAfterExit=yes
-        ExecStart=/usr/bin/systemd-creds decrypt \
-          /etc/age/%h.identity.secure \
-          /run/age.key
+        ExecStart=/usr/bin/systemd-creds decrypt /etc/age/%H.identity.secure /run/age.key
         ExecStartPost=/usr/bin/chmod 0400 /run/age.key
         StandardOutput=journal
         StandardError=journal
