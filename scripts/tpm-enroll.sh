@@ -8,7 +8,7 @@
 #
 # After this runs:
 #   - LUKS auto-unlocks via TPM2 on every subsequent boot
-#   - /etc/age/<hostname>.identity.secure exists (systemd-creds encrypted blob)
+#   - /etc/age/age.identity.secure exists (systemd-creds encrypted blob)
 #   - tpm-unseal-age.service decrypts it to /run/age.key on every boot
 #   - gitops-sync reads /run/age.key directly — no Clevis, no manual unsealing
 #
@@ -23,9 +23,7 @@ set -euo pipefail
 
 SENTINEL="/var/lib/.tpm-enrolled"
 AGE_CREDS_DIR="/etc/age"
-HOST_ID="$(hostname -s)"
-[ -n "$HOST_ID" ] || die "Unable to determine hostname"
-AGE_CREDS_FILE="$AGE_CREDS_DIR/${HOST_ID}.identity.secure"
+AGE_CREDS_FILE="$AGE_CREDS_DIR/age.identity.secure"
 TPM_CTX_DIR="$(mktemp -d /tmp/tpm-enroll-XXXXXX)"
 PCR_POLICY='{"pcr_bank":"sha256","pcr_ids":"0,7,8,9"}'
 LOG_TAG="tpm-enroll"
@@ -104,7 +102,7 @@ fi
 #
 # Sealing: systemd-creds encrypt --with-key=tpm2 binds the age private key
 # to this machine's TPM2. At every boot, tpm-unseal-age.service runs:
-#   systemd-creds decrypt /etc/age/<hostname>.identity.secure /run/age.key
+#   systemd-creds decrypt /etc/age/age.identity.secure /run/age.key
 # This is automatic — no manual intervention, no Clevis dependency for age.
 
 log "=== Phase 2: Derive age keypair from TPM2 ==="

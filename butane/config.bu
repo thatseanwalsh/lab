@@ -193,7 +193,7 @@ systemd:
         WantedBy=multi-user.target
 
     # ── Unseal age key at every boot via systemd-creds ────────────────────────
-    # Reads /etc/age/%H.identity.secure (TPM2-sealed by tpm-enroll.sh).
+    # Reads /etc/age/age.identity.secure (TPM2-sealed by tpm-enroll.sh).
     # Writes /run/age.key (mode 0400, tmpfs, gone on reboot).
     # gitops-sync.service Requires= this, so the key is always ready first.
     - name: tpm-unseal-age.service
@@ -202,13 +202,13 @@ systemd:
         [Unit]
         Description=Unseal age identity key via TPM2 (systemd-creds)
         After=local-fs.target coreos-tpm-enroll.service
-        ConditionPathExists=/etc/age/%H.identity.secure
+        ConditionPathExists=/etc/age/age.identity.secure
         Before=gitops-sync.service
 
         [Service]
         Type=oneshot
         RemainAfterExit=yes
-        ExecStart=/usr/bin/systemd-creds decrypt /etc/age/%H.identity.secure /run/age.key
+        ExecStart=/usr/bin/systemd-creds decrypt /etc/age/age.identity.secure /run/age.key
         ExecStartPost=/usr/bin/chmod 0400 /run/age.key
         StandardOutput=journal
         StandardError=journal
@@ -251,8 +251,7 @@ systemd:
         Description=GitOps: sync quadlets, secrets, caddy, firewalld from git
         # tpm-unseal-age places /run/age.key before this runs
         After=network-online.target tpm-unseal-age.service install-sops.service
-        Wants=network-online.target
-        Requires=tpm-unseal-age.service install-sops.service
+        Wants=network-online.target tpm-unseal-age.service install-sops.service
 
         [Service]
         Type=oneshot
