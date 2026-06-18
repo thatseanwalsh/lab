@@ -208,7 +208,7 @@ systemd:
         [Service]
         Type=oneshot
         RemainAfterExit=yes
-        ExecStart=/usr/bin/systemd-creds decrypt /etc/age/age.identity.secure /run/age.key
+        ExecStart=/usr/bin/systemd-creds decrypt --tpm2-device=auto /etc/age/age.identity.secure /run/age.key
         ExecStartPost=/usr/bin/chmod 0400 /run/age.key
         StandardOutput=journal
         StandardError=journal

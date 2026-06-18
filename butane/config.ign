@@ -1,6 +1,6 @@
 {
   "ignition": {
-    "version": "3.6.0"
+    "version": "3.4.0"
   },
   "passwd": {
     "users": [
@@ -137,7 +137,7 @@
         "name": "coreos-tpm-enroll.service"
       },
       {
-        "contents": "[Unit]\nDescription=Unseal age identity key via TPM2 (systemd-creds)\nAfter=local-fs.target coreos-tpm-enroll.service\nConditionPathExists=/etc/age/age.identity.secure\nBefore=gitops-sync.service\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=/usr/bin/systemd-creds decrypt /etc/age/age.identity.secure /run/age.key\nExecStartPost=/usr/bin/chmod 0400 /run/age.key\nStandardOutput=journal\nStandardError=journal\n\n[Install]\nWantedBy=multi-user.target\n",
+        "contents": "[Unit]\nDescription=Unseal age identity key via TPM2 (systemd-creds)\nAfter=local-fs.target coreos-tpm-enroll.service\nConditionPathExists=/etc/age/age.identity.secure\nBefore=gitops-sync.service\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=/usr/bin/systemd-creds decrypt --tpm2-device=auto /etc/age/age.identity.secure /run/age.key\nExecStartPost=/usr/bin/chmod 0400 /run/age.key\nStandardOutput=journal\nStandardError=journal\n\n[Install]\nWantedBy=multi-user.target\n",
         "enabled": true,
         "name": "tpm-unseal-age.service"
       },
