@@ -5,7 +5,7 @@
 {
   # Global options
   # Set your contact email (replace YOUR_DOMAIN below).
-  email admin@YOUR_DOMAIN
+  email engr@zehru.com
   # Uncomment to use ZeroSSL instead of Let's Encrypt:
   # acme_ca https://acme.zerossl.com/v2/DV90
 
