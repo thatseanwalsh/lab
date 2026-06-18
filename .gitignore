@@ -1,0 +1,4 @@
+*.env
+*.key
+*.ign
+config.ign

@@ -1,0 +1,26 @@
+# .sops.yaml — sops encryption rules
+#
+# The age public key below is derived from each machine's TPM2 on first boot.
+#
+# FIRST-TIME SETUP FOR A NEW HOST:
+#   1. Boot the host and wait for coreos-tpm-enroll.service to complete
+#   2. Capture the public key:
+#        ssh core@HOST journalctl -u coreos-tpm-enroll | grep AGE_PUBLIC_KEY
+#   3. Replace the placeholder below with the real key
+#   4. Encrypt your secrets against it:
+#        sops --encrypt secrets/netbird.env > secrets/netbird.env.enc
+#   5. Commit and push — the host picks it up on the next sync cycle
+#
+# MULTIPLE HOSTS:
+#   Add one entry per host under creation_rules, using path_regex to scope
+#   which secrets each host can decrypt. Or use multiple recipients on a
+#   single rule if all hosts should share access to the same secrets.
+#
+# MULTIPLE RECIPIENTS (all hosts decrypt same secrets):
+#   age: >-
+#     age1HOST1_PUBLIC_KEY,
+#     age1HOST2_PUBLIC_KEY
+
+creation_rules:
+  - path_regex: secrets/.*\.env$
+    age: 

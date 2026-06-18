@@ -1,0 +1,50 @@
+# /etc/containers/systemd/netbird-management.container
+# Quadlet unit for the Netbird Management server
+# Secrets injected at runtime from /run/secrets/netbird.env (sops-decrypted)
+
+[Unit]
+Description=Netbird Management Server
+After=network-online.target run-secrets.mount
+Wants=network-online.target
+Requires=run-secrets.mount caddy-net.network netbird-data.volume
+
+[Container]
+Image=netbirdio/management:latest
+
+# Runtime secrets (decrypted from sops by gitops-sync.service)
+EnvironmentFile=/run/secrets/netbird.env
+
+# Static non-secret config
+Environment=NETBIRD_STORE_ENGINE=sqlite
+Environment=NETBIRD_SIGNAL_URI=grpc://netbird-signal:10000
+
+# Podman network
+Network=caddy-net.network
+
+# Named volume for persistent data
+Volume=netbird-data.volume:/var/lib/netbird:z
+
+# Published port for signal/management gRPC (fronted by Caddy)
+PublishPort=127.0.0.1:8080:8080
+PublishPort=127.0.0.1:10000:10000
+
+# Security hardening
+SecurityLabelDisable=false
+ReadOnly=false
+NoNewPrivileges=true
+DropCapability=ALL
+AddCapability=NET_BIND_SERVICE
+
+# Health check
+HealthCmd=wget -qO- http://localhost:8080/api/v1/groups || exit 1
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=3
+
+[Service]
+Restart=always
+RestartSec=10s
+TimeoutStartSec=120
+
+[Install]
+WantedBy=multi-user.target default.target

@@ -1,0 +1,21 @@
+# /etc/containers/systemd/netbird-dashboard.container
+# Quadlet unit for the Netbird dashboard UI
+
+[Unit]
+Description=Netbird Dashboard
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image=netbirdio/dashboard:latest
+PublishPort=127.0.0.1:3000:3000
+Network=caddy-net.network
+NoNewPrivileges=true
+DropCapability=ALL
+
+[Service]
+Restart=always
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target default.target

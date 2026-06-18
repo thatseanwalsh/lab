@@ -1,0 +1,97 @@
+# Caddyfile — Netbird reverse proxy
+# Replace YOUR_DOMAIN with your actual domain.
+# Caddy auto-provisions TLS via ACME (Let's Encrypt / ZeroSSL).
+
+{
+  # Global options
+  # Set your contact email (replace YOUR_DOMAIN below).
+  email admin@YOUR_DOMAIN
+  # Uncomment to use ZeroSSL instead of Let's Encrypt:
+  # acme_ca https://acme.zerossl.com/v2/DV90
+
+  # Enable HTTP/3 (QUIC)
+  servers {
+    protocols h1 h2 h3
+  }
+}
+
+# Cloudflare DNS (wildcard certs):
+# - Provision a Cloudflare API token with "Zone:DNS:Edit" for your zone.
+# - Export it into the environment where Caddy runs as: CLOUDFLARE_API_TOKEN
+# - Caddy will use the DNS challenge to obtain wildcard certs for *.YOUR_DOMAIN
+# Note: do NOT store secrets in this repo; set the token in your container or
+# systemd unit (quadlet) environment instead.
+
+# ── Dashboard (WebUI) ──────────────────────────────────────────────────
+netbird.zehru.com, *.zehru.com {
+  # TLS auto via ACME using Cloudflare DNS for wildcard certs (requires CLOUDFLARE_API_TOKEN)
+  tls {
+    dns cloudflare
+    protocols tls1.2 tls1.3
+  }
+
+  # Security headers
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "DENY"
+    X-XSS-Protection "1; mode=block"
+    Referrer-Policy "strict-origin-when-cross-origin"
+    Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';"
+    -Server
+  }
+
+  # Dashboard UI
+  reverse_proxy localhost:3000 {
+    health_uri /
+    health_interval 30s
+  }
+}
+
+# ── Management API (REST + gRPC) ───────────────────────────────────────
+api.zehru.com, *.zehru.com {
+  tls {
+    dns cloudflare
+    protocols tls1.2 tls1.3
+  }
+
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    -Server
+  }
+
+  # gRPC traffic (used by netbird clients)
+  @grpc {
+    protocol grpc
+  }
+  reverse_proxy @grpc localhost:10000 {
+    transport http {
+      versions h2c
+    }
+  }
+
+  # REST API
+  reverse_proxy localhost:8080 {
+    health_uri /api/v1/groups
+    health_interval 30s
+  }
+}
+
+# ── Signal server ──────────────────────────────────────────────────────
+signal.zehru.com, *.zehru.com {
+  tls {
+    dns cloudflare
+    protocols tls1.2 tls1.3
+  }
+
+  header {
+    -Server
+  }
+
+  # Signal is gRPC only
+  reverse_proxy localhost:10000 {
+    transport http {
+      versions h2c
+    }
+  }
+}

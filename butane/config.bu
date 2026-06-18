@@ -1,0 +1,296 @@
+variant: fcos
+version: 1.5.0
+
+# ============================================================
+# Fedora CoreOS — Netbird Server Node
+#
+# This file contains no secrets and is safe to commit publicly.
+# All key material is derived on-device and unlocked only after boot.
+#
+# What happens on first boot:
+#   1. firewalld starts using the embedded public zone.
+#   2. sops is installed from GitHub releases.
+#   3. random-hostname.service derives a stable hostname from hardware.
+#   4. coreos-tpm-enroll.service binds LUKS to TPM and seals the age key.
+#   5. gitops-sync.timer begins pulling the repo every 5 minutes.
+#
+# After first boot, capture the host age public key and encrypt secrets:
+#   journalctl -u coreos-tpm-enroll | grep AGE_PUBLIC_KEY
+#   sops --encrypt secrets/netbird.env > secrets/netbird.env.enc
+#   git add .sops.yaml secrets/netbird.env.enc && git commit && git push
+# ============================================================
+
+passwd:
+  users:
+    - name: core
+      ssh_authorized_keys:
+        - sk-ssh-ed25519@openssh.com AAAAGnNrLXNzaC1lZDI1NTE5QG9wZW5zc2guY29tAAAAIIzbSZ+dMH+iUs1fWb9St9hzPBnc2IJ0769cCgoWlP8oAAAABHNzaDo= ssh:
+      groups:
+        - wheel
+        - sudo
+
+storage:
+  directories:
+    - path: /etc/containers/systemd
+      mode: 0755
+    - path: /etc/caddy
+      mode: 0750
+    - path: /var/lib/netbird-server
+      mode: 0700
+    - path: /var/lib/caddy
+      mode: 0700
+    - path: /opt/gitops
+      mode: 0755
+    - path: /etc/sops
+      mode: 0700
+    - path: /etc/firewalld/zones
+      mode: 0750
+    - path: /run/secrets
+      mode: 0700
+
+  files:
+    # ── gitops env ────────────────────────────────────────────────────────
+    - path: /etc/gitops.env
+      mode: 0644
+      contents:
+        inline: |
+          GITOPS_REPO_URL=https://github.com/thatseanwalsh/zehru-labs.git
+          GITOPS_BRANCH=main
+
+    # ── gitops sync script (local file reference) ─────────────────────────
+    # Build with: butane --pretty --strict --files-dir . butane/config.bu
+    - path: /opt/gitops/sync.sh
+      mode: 0750
+      contents:
+        local: scripts/gitops-sync.sh
+
+    # ── TPM enroll script ────────────────────────────────────────────────
+    - path: /usr/local/bin/tpm-enroll.sh
+      mode: 0750
+      contents:
+        local: scripts/tpm-enroll.sh
+
+    # ── firewalld: public zone — restrictive default ----------------------
+    # This file is managed by gitops; edit firewalld/public.xml in the repo.
+    # It is also placed here so firewalld is configured correctly from the
+    # very first boot, before gitops runs.
+    - path: /etc/firewalld/zones/public.xml
+      mode: 0644
+      contents:
+        local: firewalld/public.xml
+
+    # ── sysctl hardening ─────────────────────────────────────────────────
+    - path: /etc/sysctl.d/99-hardening.conf
+      mode: 0644
+      contents:
+        inline: |
+          net.ipv4.conf.all.rp_filter = 1
+          net.ipv4.conf.default.rp_filter = 1
+          net.ipv4.tcp_syncookies = 1
+          net.ipv6.conf.all.accept_ra = 0
+          kernel.dmesg_restrict = 1
+          kernel.kptr_restrict = 2
+
+    # ── /run/secrets tmpfs (backup — also created by systemd .mount unit) ─
+    - path: /etc/systemd/system/run-secrets.mount
+      mode: 0644
+      contents:
+        inline: |
+          [Unit]
+          Description=tmpfs for runtime secrets
+          DefaultDependencies=no
+          Before=local-fs.target
+
+          [Mount]
+          What=tmpfs
+          Where=/run/secrets
+          Type=tmpfs
+          Options=mode=0700,size=32M,nodev,nosuid,noexec
+
+          [Install]
+          WantedBy=local-fs.target
+
+systemd:
+  units:
+    # ── /run/secrets tmpfs ────────────────────────────────────────────────
+    - name: run-secrets.mount
+      enabled: true
+
+    # ── firewalld ────────────────────────────────────────────────────────
+    # Fedora CoreOS ships firewalld; we just need to enable + start it.
+    # The zone file above is laid down by Ignition before first boot.
+    - name: firewalld.service
+      enabled: true
+      # Drop-in: ensure firewalld starts before containers
+      dropins:
+        - name: 10-before-containers.conf
+          contents: |
+            [Unit]
+            # Ensure firewalld starts before container-related units.
+            # Use the generic containers target and podman.service instead
+            # of listing individual services so new container units are
+            # covered automatically.
+            Before=containers.target podman.service
+
+    # ── Apply firewalld rules after first network ─────────────────────────
+    - name: firewalld-configure.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Apply declarative firewalld rules
+        After=firewalld.service network.target
+        Wants=firewalld.service
+        ConditionPathExists=!/var/lib/.firewalld-configured
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        # Ensure we start from the zone file we laid down
+        ExecStart=firewall-cmd --reload
+        # HTTPS + HTTP for Caddy (TLS termination + ACME HTTP-01)
+        ExecStart=firewall-cmd --permanent --add-service=https
+        ExecStart=firewall-cmd --permanent --add-service=http
+        # QUIC / HTTP3
+        ExecStart=firewall-cmd --permanent --add-port=443/udp
+        # STUN (Netbird / TURN discovery)
+        ExecStart=firewall-cmd --permanent --add-port=3478/udp
+        # TURN relay port range
+        ExecStart=firewall-cmd --permanent --add-port=49152-65535/udp
+        # SSH (keep this unless you want lockout)
+        ExecStart=firewall-cmd --permanent --add-service=ssh
+        # Apply permanent rules to runtime
+        ExecStart=firewall-cmd --reload
+        ExecStart=/bin/touch /var/lib/.firewalld-configured
+        StandardOutput=journal
+        StandardError=journal
+
+        [Install]
+        WantedBy=multi-user.target
+
+    # ── Hardware-derived hostname service ─────────────────────────────────
+    - name: random-hostname.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Derive a stable hostname from hardware identifiers
+        ConditionPathExists=!/var/lib/.hostname-derived
+        After=local-fs.target
+        Before=coreos-tpm-enroll.service
+
+        [Service]
+        Type=oneshot
+        ExecStart=/usr/bin/bash -lc '
+          UUID=$(cat /sys/class/dmi/id/product_uuid 2>/dev/null || cat /etc/machine-id) && \
+          HASH=$(echo -n "$UUID" | sha256sum | cut -c1-3) && \
+          /usr/bin/hostnamectl set-hostname $HASH'
+        ExecStartPost=/usr/bin/touch /var/lib/.hostname-derived
+        StandardOutput=journal
+        StandardError=journal
+
+        [Install]
+        WantedBy=multi-user.target
+
+    - name: coreos-tpm-enroll.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Enroll LUKS+TPM2 and seal age key via systemd-creds
+        ConditionPathExists=!/var/lib/.tpm-enrolled
+        After=local-fs.target random-hostname.service
+        Before=tpm-unseal-age.service
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/local/bin/tpm-enroll.sh
+        StandardOutput=journal
+        StandardError=journal
+
+        [Install]
+        WantedBy=multi-user.target
+
+    # ── Unseal age key at every boot via systemd-creds ────────────────────────
+    # Reads /etc/age/%h.identity.secure (TPM2-sealed by tpm-enroll.sh).
+    # Writes /run/age.key (mode 0400, tmpfs, gone on reboot).
+    # gitops-sync.service Requires= this, so the key is always ready first.
+    - name: tpm-unseal-age.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Unseal age identity key via TPM2 (systemd-creds)
+        After=local-fs.target coreos-tpm-enroll.service
+        ConditionPathExists=/etc/age/%h.identity.secure
+        Before=gitops-sync.service
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/bin/systemd-creds decrypt \
+          /etc/age/%h.identity.secure \
+          /run/age.key
+        ExecStartPost=/usr/bin/chmod 0400 /run/age.key
+        StandardOutput=journal
+        StandardError=journal
+
+        [Install]
+        WantedBy=multi-user.target
+
+    # ── Install sops ──────────────────────────────────────────────────────────
+    - name: install-sops.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Install sops binary
+        ConditionPathExists=!/usr/local/bin/sops
+        After=network-online.target
+        Wants=network-online.target
+        Before=gitops-sync.service
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        Environment=SOPS_VERSION=v3.9.4
+        ExecStart=/bin/bash -c '\
+          curl -sSfL \
+            "https://github.com/getsops/sops/releases/download/${SOPS_VERSION}/sops-${SOPS_VERSION}.linux.amd64" \
+            -o /usr/local/bin/sops && \
+          chmod +x /usr/local/bin/sops && \
+          echo "sops ${SOPS_VERSION} installed"'
+        StandardOutput=journal
+        StandardError=journal
+
+        [Install]
+        WantedBy=multi-user.target
+
+    # ── GitOps sync timer ─────────────────────────────────────────────────────
+    - name: gitops-sync.service
+      contents: |
+        [Unit]
+        Description=GitOps: sync quadlets, secrets, caddy, firewalld from git
+        # tpm-unseal-age places /run/age.key before this runs
+        After=network-online.target tpm-unseal-age.service install-sops.service
+        Wants=network-online.target
+        Requires=tpm-unseal-age.service install-sops.service
+
+        [Service]
+        Type=oneshot
+        EnvironmentFile=/etc/gitops.env
+        ExecStart=/opt/gitops/sync.sh
+        StandardOutput=journal
+        StandardError=journal
+
+
+    - name: gitops-sync.timer
+      enabled: true
+      contents: |
+        [Unit]
+        Description=GitOps sync every 5 minutes
+
+        [Timer]
+        OnBootSec=2min
+        OnUnitActiveSec=5min
+        RandomizedDelaySec=30
+        Persistent=true
+
+        [Install]
+        WantedBy=timers.target

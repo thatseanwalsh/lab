@@ -1,0 +1,37 @@
+# /etc/containers/systemd/caddy-proxy.container
+# Quadlet for Caddy reverse proxy
+
+[Unit]
+Description=Caddy Reverse Proxy
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image=caddy:latest
+
+# Mount Caddyfile and data directory
+Volume=/etc/caddy/Caddyfile:/etc/caddy/Caddyfile:ro,z
+Volume=caddy-data.volume:/data:z
+Volume=caddy-config.volume:/config:z
+# Runtime secret for Cloudflare API token (sops-decrypted to /run/secrets)
+EnvironmentFile=/run/secrets/cloudflare.env
+
+# Expose HTTPS and HTTP to host
+PublishPort=80:80
+PublishPort=443:443
+# QUIC / HTTP3
+PublishPort=443:443/udp
+
+Network=caddy-net.network
+
+NoNewPrivileges=true
+# Caddy needs these caps to bind <1024 ports
+AddCapability=NET_BIND_SERVICE
+DropCapability=ALL
+
+[Service]
+Restart=always
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target default.target

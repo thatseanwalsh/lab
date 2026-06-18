@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  firewalld/public.xml
+  Declarative firewall zone for the Netbird server.
+  Managed by gitops — edit here, commit, and firewalld reloads automatically.
+
+  Services open:
+    ssh      — remote management (restrict to known IPs if possible)
+    http     — Caddy ACME HTTP-01 challenge + redirect to HTTPS
+    https    — Caddy TLS (dashboard, API, signal)
+
+  Ports open:
+    443/udp  — HTTP/3 (QUIC)
+    3478/udp — STUN (Netbird peer discovery)
+    49152-65535/udp — TURN relay range
+
+  To restrict SSH to a specific source IP, change the service entry to:
+    <rule family="ipv4">
+      <source address="YOUR.ADMIN.IP/32"/>
+      <service name="ssh"/>
+      <accept/>
+    </rule>
+  and remove the plain <service name="ssh"/> line.
+-->
+<zone>
+  <short>Public</short>
+  <description>Zehru Labs</description>
+
+  <!-- Remote management -->
+  <service name="ssh"/>
+
+  <!-- Caddy reverse proxy -->
+  <service name="http"/>
+  <service name="https"/>
+
+  <!-- HTTP/3 QUIC -->
+  <port protocol="udp" port="443"/>
+
+  <!-- Netbird STUN -->
+  <port protocol="udp" port="3478"/>
+
+  <!-- Netbird TURN relay range -->
+  <port protocol="udp" port="49152-65535"/>
+</zone>
