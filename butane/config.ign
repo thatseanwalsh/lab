@@ -1,13 +1,12 @@
 {
   "ignition": {
-    "version": "3.4.0"
+    "version": "3.6.0"
   },
   "passwd": {
     "users": [
       {
         "groups": [
-          "wheel",
-          "sudo"
+          "wheel"
         ],
         "name": "core",
         "sshAuthorizedKeys": [
@@ -119,7 +118,7 @@
         "name": "firewalld.service"
       },
       {
-        "contents": "[Unit]\nDescription=Apply declarative firewalld rules\nAfter=firewalld.service network.target\nWants=firewalld.service\nConditionPathExists=!/var/lib/.firewalld-configured\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\n# Ensure we start from the zone file we laid down\nExecStart=firewall-cmd --reload\n# HTTPS + HTTP for Caddy (TLS termination + ACME HTTP-01)\nExecStart=firewall-cmd --permanent --add-service=https\nExecStart=firewall-cmd --permanent --add-service=http\n# QUIC / HTTP3\nExecStart=firewall-cmd --permanent --add-port=443/udp\n# STUN (Netbird / TURN discovery)\nExecStart=firewall-cmd --permanent --add-port=3478/udp\n# TURN relay port range\nExecStart=firewall-cmd --permanent --add-port=49152-65535/udp\n# SSH (keep this unless you want lockout)\nExecStart=firewall-cmd --permanent --add-service=ssh\n# Apply permanent rules to runtime\nExecStart=firewall-cmd --reload\nExecStart=/bin/touch /var/lib/.firewalld-configured\nStandardOutput=journal\nStandardError=journal\n\n[Install]\nWantedBy=multi-user.target\n",
+        "contents": "[Unit]\nDescription=Apply declarative firewalld rules\nAfter=firewalld.service network.target\nWants=firewalld.service\nConditionPathExists=!/var/lib/.firewalld-configured\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=/bin/bash -c '\\\n  firewall-cmd --reload \u0026\u0026 \\\n  firewall-cmd --permanent --add-service=https \u0026\u0026 \\\n  firewall-cmd --permanent --add-service=http \u0026\u0026 \\\n  firewall-cmd --permanent --add-port=443/udp \u0026\u0026 \\\n  firewall-cmd --permanent --add-port=3478/udp \u0026\u0026 \\\n  firewall-cmd --permanent --add-port=49152-65535/udp \u0026\u0026 \\\n  firewall-cmd --permanent --add-service=ssh \u0026\u0026 \\\n  firewall-cmd --reload \u0026\u0026 \\\n  touch /var/lib/.firewalld-configured'\nStandardOutput=journal\nStandardError=journal\n\n[Install]\nWantedBy=multi-user.target\n",
         "enabled": true,
         "name": "firewalld-configure.service"
       },
@@ -134,7 +133,7 @@
         "name": "coreos-tpm-enroll.service"
       },
       {
-        "contents": "[Unit]\nDescription=Unseal age identity key via TPM2 (systemd-creds)\nAfter=local-fs.target coreos-tpm-enroll.service\nConditionPathExists=/etc/age/%h.identity.secure\nBefore=gitops-sync.service\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=/usr/bin/systemd-creds decrypt \\\n  /etc/age/%h.identity.secure \\\n  /run/age.key\nExecStartPost=/usr/bin/chmod 0400 /run/age.key\nStandardOutput=journal\nStandardError=journal\n\n[Install]\nWantedBy=multi-user.target\n",
+        "contents": "[Unit]\nDescription=Unseal age identity key via TPM2 (systemd-creds)\nAfter=local-fs.target coreos-tpm-enroll.service\nConditionPathExists=/etc/age/%H.identity.secure\nBefore=gitops-sync.service\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=/usr/bin/systemd-creds decrypt /etc/age/%H.identity.secure /run/age.key\nExecStartPost=/usr/bin/chmod 0400 /run/age.key\nStandardOutput=journal\nStandardError=journal\n\n[Install]\nWantedBy=multi-user.target\n",
         "enabled": true,
         "name": "tpm-unseal-age.service"
       },
