@@ -29,6 +29,10 @@ passwd:
         - wheel
 
 storage:
+  luks:
+    - name: luks-root
+      device: /dev/sda4
+      wipe_volume: true
   directories:
     - path: /etc/containers/systemd
       mode: 0755

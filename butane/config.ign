@@ -107,6 +107,13 @@
         },
         "mode": 420
       }
+    ],
+    "luks": [
+      {
+        "device": "/dev/sda4",
+        "name": "luks-root",
+        "wipeVolume": true
+      }
     ]
   },
   "systemd": {
