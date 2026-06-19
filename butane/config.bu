@@ -259,7 +259,7 @@ systemd:
       enabled: true
       contents: |
         [Unit]
-        Description=GitOps: sync quadlets, secrets, caddy, firewalld from git
+        Description=GitOps: sync quadlets, secrets, caddy from git
         # tpm-unseal-age places /run/age.key before this runs
         After=network-online.target tpm-unseal-age.service install-sops.service
         Wants=network-online.target tpm-unseal-age.service install-sops.service
