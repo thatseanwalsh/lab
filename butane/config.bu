@@ -48,6 +48,12 @@ storage:
       mode: 0700
     - path: /etc/age
       mode: 448
+    - path: /home/core/caddy
+      mode: 0755
+      user:
+        name: core
+      group:
+        name: core
 
   files:
     # ── nftables───────────────────────────────────────────────────────────
@@ -113,6 +119,7 @@ storage:
           net.ipv6.conf.all.accept_ra = 0
           kernel.dmesg_restrict = 1
           kernel.kptr_restrict = 2
+          net.ipv4.ip_unprivileged_port_start = 80
 
     # ── /run/secrets tmpfs (backup — also created by systemd .mount unit) ─
     - path: /etc/systemd/system/run-secrets.mount
@@ -135,6 +142,25 @@ storage:
 
 systemd:
   units:
+    - name: enable-linger.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Enable lingering for core user (rootless podman)
+        After=local-fs.target
+        ConditionPathExists=!/var/lib/.linger-enabled
+        Before=gitops-sync.service
+
+        [Service]
+        Type=oneshot
+        ExecStart=/usr/bin/loginctl enable-linger core
+        ExecStartPost=/usr/bin/touch /var/lib/.linger-enabled
+        StandardOutput=journal
+        StandardError=journal
+
+        [Install]
+        WantedBy=multi-user.target
+
     - name: coreos-install-packages.service
       enabled: true
       contents: |
@@ -262,7 +288,7 @@ systemd:
         Description=GitOps: sync quadlets, secrets, caddy from git
         # tpm-unseal-age places /run/age.key before this runs
         After=network-online.target tpm-unseal-age.service install-sops.service
-        Wants=network-online.target tpm-unseal-age.service install-sops.service
+        Wants=network-online.target tpm-unseal-age.service install-sops.service enable-linger.service
 
         [Service]
         Type=oneshot

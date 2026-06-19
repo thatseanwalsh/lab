@@ -2,3 +2,4 @@
 Driver=bridge
 # Optional static subnet for the podman network
 # Subnet=10.88.0.0/16
+Options=isolate=strict

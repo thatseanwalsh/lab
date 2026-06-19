@@ -1,18 +1,19 @@
-# /etc/containers/systemd/caddy-proxy.container
-# Quadlet for Caddy reverse proxy
+# quadlets-rootless/caddy-proxy.container
+# Rootless quadlet for Caddy reverse proxy — runs as core, not root.
+# Deployed by gitops-sync to /home/core/.config/containers/systemd/
 
 [Unit]
-Description=Caddy Reverse Proxy
+Description=Caddy Reverse Proxy (rootless)
 After=network-online.target
 Wants=network-online.target
 
 [Container]
 Image=ghcr.io/thatseanwalsh/caddy-custom:latest
 
-Volume=/etc/caddy/Caddyfile:/etc/caddy/Caddyfile:ro,z
+Volume=/home/core/caddy/Caddyfile:/etc/caddy/Caddyfile:ro,z
 Volume=caddy-data.volume:/data:z
 Volume=caddy-config.volume:/config:z
-EnvironmentFile=/run/secrets/cloudflare.env
+EnvironmentFile=/run/user/1000/secrets/cloudflare.env
 
 # Expose HTTPS and HTTP to host
 PublishPort=80:80
@@ -21,14 +22,11 @@ PublishPort=443:443
 PublishPort=443:443/udp
 
 Network=caddy-net.network
-
 NoNewPrivileges=true
-AddCapability=NET_BIND_SERVICE
-DropCapability=ALL
 
 [Service]
 Restart=always
 RestartSec=10s
 
 [Install]
-WantedBy=multi-user.target default.target
+WantedBy=default.target

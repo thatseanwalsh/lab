@@ -7,15 +7,17 @@
 #   - tpm-unseal-age.service has placed /run/age.key (mode 0400)
 #   - network-online.target is reached
 #   - sops is installed at /usr/local/bin/sops
+#   - enable-linger.service has run (core's user session may still be starting)
 #
 # This script:
 #   1. clones or updates the repo
 #   2. decrypts secrets/*.enc → /run/secrets/
-#   3. syncs quadlets → /etc/containers/systemd/
-#   4. syncs .sops.yaml → /etc/sops/.sops.yaml
-#   5. syncs Caddyfile → /etc/caddy/Caddyfile
-#   6. syncs itself → /opt/gitops/sync.sh
-#   7. reloads changed units and secret-dependent containers
+#   3. syncs root quadlets → /etc/containers/systemd/
+#   4. syncs rootless quadlets → /home/core/.config/containers/systemd/
+#   5. syncs .sops.yaml → /etc/sops/.sops.yaml
+#   6. syncs Caddyfile → /etc/caddy/Caddyfile
+#   7. syncs itself → /opt/gitops/sync.sh
+#   8. reloads changed units and secret-dependent containers (root + rootless)
 
 set -euo pipefail
 
@@ -29,6 +31,8 @@ AGE_KEY="/run/age.key"
 LOG_TAG="gitops-sync"
 HOSTNAME=""
 HOST_QUADLET_DIR=""
+HOST_QUADLET_DIR_ROOTLESS=""
+CORE_SESSION_READY=false
 
 log() { logger -t "$LOG_TAG" "$*"; echo "$(date -Iseconds) [sync] $*"; }
 warn() { logger -p user.warning -t "$LOG_TAG" "WARN: $*"; echo "$(date -Iseconds) [sync] WARN: $*"; }
@@ -42,7 +46,9 @@ load_host_settings() {
   fi
   HOSTNAME="${GITOPS_HOSTNAME:-$(hostname -s)}"
   HOST_QUADLET_DIR="$REPO_DIR/quadlets/$HOSTNAME"
+  HOST_QUADLET_DIR_ROOTLESS="$REPO_DIR/quadlets-rootless/$HOSTNAME"
   log "Host-specific quadlets directory: $HOST_QUADLET_DIR"
+  log "Host-specific rootless quadlets directory: $HOST_QUADLET_DIR_ROOTLESS"
 }
 
 ensure_age_key() {
@@ -55,6 +61,23 @@ ensure_age_key() {
     warn "Check: journalctl -u coreos-tpm-enroll"
     warn "Secrets will not be decrypted this cycle."
     AGE_KEY_AVAILABLE=false
+  fi
+}
+
+# Waits (once per sync cycle) for core's user session / runtime dir to be up.
+# Rootless functions check $CORE_SESSION_READY instead of waiting individually.
+wait_for_core_session() {
+  local tries=0
+  while [ ! -d "/run/user/1000" ] && [ "$tries" -lt 10 ]; do
+    sleep 1
+    tries=$((tries + 1))
+  done
+
+  if [ -d "/run/user/1000" ]; then
+    CORE_SESSION_READY=true
+  else
+    CORE_SESSION_READY=false
+    warn "/run/user/1000 still not present after waiting — is lingering enabled for core?"
   fi
 }
 
@@ -102,13 +125,15 @@ decrypt_secrets() {
     case "$enc_file" in
       *.env.enc|*.env)
         SOPS_AGE_KEY_FILE="$AGE_KEY" sops --decrypt --input-type dotenv --output-type dotenv "$enc_file" > "$tmp" 2>/dev/null
+        decrypt_status=$?
         ;;
       *)
         SOPS_AGE_KEY_FILE="$AGE_KEY" sops --decrypt "$enc_file" > "$tmp" 2>/dev/null
+        decrypt_status=$?
         ;;
     esac
 
-    if [ $? -eq 0 ]; then
+    if [ "$decrypt_status" -eq 0 ]; then
       if ! cmp -s "$tmp" "$dest" 2>/dev/null; then
         mv "$tmp" "$dest"
         chmod 600 "$dest"
@@ -121,6 +146,30 @@ decrypt_secrets() {
       rm -f "$tmp"
       warn "Decryption failed: $enc_file"
       warn "Ensure the host age public key is present in .sops.yaml and the file is valid."
+    fi
+  done
+  shopt -u nullglob
+}
+
+sync_rootless_secrets() {
+  [ "$CORE_SESSION_READY" = true ] || { warn "Skipping rootless secrets sync — core session not ready"; return; }
+
+  local rootless_secrets_dst="/run/user/1000/secrets"
+  mkdir -p "$rootless_secrets_dst"
+  chown core:core "$rootless_secrets_dst"
+  chmod 700 "$rootless_secrets_dst"
+
+  shopt -s nullglob
+  for src in "$SECRETS_DST"/*; do
+    [ -f "$src" ] || continue
+    base=$(basename "$src")
+    dst="$rootless_secrets_dst/$base"
+
+    if ! cmp -s "$src" "$dst" 2>/dev/null; then
+      cp "$src" "$dst"
+      chown core:core "$dst"
+      chmod 600 "$dst"
+      log "Copied secret for rootless use: $base"
     fi
   done
   shopt -u nullglob
@@ -156,6 +205,72 @@ sync_quadlets() {
   shopt -u nullglob
 }
 
+sync_rootless_quadlets() {
+  ROOTLESS_CHANGED=()
+  [ "$CORE_SESSION_READY" = true ] || { warn "Skipping rootless quadlet sync — core session not ready"; return; }
+
+  local dst="/home/core/.config/containers/systemd"
+  mkdir -p "$dst"
+  chown core:core "$dst" -R
+
+  shopt -s nullglob
+  for ext in container network volume pod kube image; do
+    for src in "$REPO_DIR"/quadlets-rootless/*."$ext"; do
+      [ -f "$src" ] || continue
+      target="$dst/$(basename "$src")"
+      if ! cmp -s "$src" "$target" 2>/dev/null; then
+        install -o core -g core -m 644 "$src" "$target"
+        ROOTLESS_CHANGED+=("$(basename "$src")")
+        log "Updated rootless quadlet: $(basename "$src")"
+      fi
+    done
+  done
+  shopt -u nullglob
+}
+
+sync_rootless_host_quadlets() {
+  [ "$CORE_SESSION_READY" = true ] || { warn "Skipping rootless host quadlet sync — core session not ready"; return; }
+
+  local host_dir="$HOST_QUADLET_DIR_ROOTLESS"
+  local dst="/home/core/.config/containers/systemd"
+
+  if [ ! -d "$host_dir" ]; then
+    log "No host-specific rootless quadlets for $HOSTNAME"
+    return
+  fi
+
+  mkdir -p "$dst"
+  chown core:core "$dst"
+
+  shopt -s nullglob
+  for ext in container network volume pod kube image; do
+    for src in "$host_dir"/*."$ext"; do
+      [ -f "$src" ] || continue
+      target="$dst/$(basename "$src")"
+      if ! cmp -s "$src" "$target" 2>/dev/null; then
+        install -o core -g core -m 644 "$src" "$target"
+        ROOTLESS_CHANGED+=("$(basename "$src")")
+        log "Updated host rootless quadlet: $(basename "$src")"
+      fi
+    done
+  done
+  shopt -u nullglob
+}
+
+reload_rootless_units() {
+  [ ${#ROOTLESS_CHANGED[@]} -gt 0 ] || return
+  [ "$CORE_SESSION_READY" = true ] || { warn "Skipping rootless unit reload — core session not ready"; return; }
+
+  log "Reloading rootless units for core (${#ROOTLESS_CHANGED[@]} changed)"
+  sudo -u core XDG_RUNTIME_DIR=/run/user/1000 systemctl --user daemon-reload
+  for unit in "${ROOTLESS_CHANGED[@]}"; do
+    svc="${unit%.*}"
+    sudo -u core XDG_RUNTIME_DIR=/run/user/1000 systemctl --user restart "$svc" \
+      && log "Restarted (rootless) $svc" \
+      || warn "(rootless) $svc restart failed"
+  done
+}
+
 sync_host_quadlets() {
   if [ ! -d "$HOST_QUADLET_DIR" ]; then
     log "No host-specific quadlets for $HOSTNAME"
@@ -184,15 +299,25 @@ sync_sops_config() {
   fi
 }
 
-sync_caddy() {
+sync_rootless_caddy() {
+  [ "$CORE_SESSION_READY" = true ] || { warn "Skipping rootless Caddyfile sync — core session not ready"; return; }
+
   if [ -f "$REPO_DIR/caddy/Caddyfile" ]; then
-    mkdir -p "$CADDY_DST"
-    if install_if_changed "$REPO_DIR/caddy/Caddyfile" "$CADDY_DST/Caddyfile" 640; then
-      log "Updated Caddyfile"
-      if systemctl is-active caddy-proxy.service &>/dev/null && podman exec caddy-proxy caddy validate --config /etc/caddy/Caddyfile &>/dev/null; then
-        systemctl reload caddy-proxy.service 2>/dev/null && log "Caddy reloaded (graceful)" || warn "Caddy reload failed"
+    local dst="/home/core/caddy/Caddyfile"
+    mkdir -p "$(dirname "$dst")"
+    chown core:core "$(dirname "$dst")"
+
+    if ! cmp -s "$REPO_DIR/caddy/Caddyfile" "$dst" 2>/dev/null; then
+      install -o core -g core -m 644 "$REPO_DIR/caddy/Caddyfile" "$dst"
+      log "Updated rootless Caddyfile"
+
+      if sudo -u core XDG_RUNTIME_DIR=/run/user/1000 systemctl --user is-active caddy-proxy.service &>/dev/null \
+         && sudo -u core XDG_RUNTIME_DIR=/run/user/1000 podman exec caddy-proxy caddy validate --config /etc/caddy/Caddyfile &>/dev/null; then
+        sudo -u core XDG_RUNTIME_DIR=/run/user/1000 systemctl --user reload caddy-proxy.service 2>/dev/null \
+          && log "Caddy (rootless) reloaded gracefully" \
+          || warn "Caddy (rootless) reload failed"
       else
-        warn "Caddyfile validation failed or caddy-proxy unavailable — not reloading"
+        warn "Rootless Caddyfile validation failed or caddy-proxy unavailable — not reloading"
       fi
     fi
   fi
@@ -230,6 +355,32 @@ restart_secret_containers() {
   shopt -u nullglob
 }
 
+restart_rootless_secret_containers() {
+  if [ ${#SECRETS_CHANGED[@]} -eq 0 ]; then
+    return
+  fi
+  [ "$CORE_SESSION_READY" = true ] || { warn "Skipping rootless secret-container restart — core session not ready"; return; }
+
+  log "Changed secrets: ${SECRETS_CHANGED[*]}"
+  local dst="/home/core/.config/containers/systemd"
+  shopt -s nullglob
+  for unit_file in "$dst"/*.container; do
+    [ -f "$unit_file" ] || continue
+    svc="$(basename "$unit_file" .container)"
+    label=$(grep -i '^Label=secrets=' "$unit_file" | sed 's/^[Ll]abel=secrets=//' | tr ',' '\n') 2>/dev/null || true
+    [ -z "$label" ] && continue
+    for changed in "${SECRETS_CHANGED[@]}"; do
+      if echo "$label" | grep -qxF "$changed"; then
+        sudo -u core XDG_RUNTIME_DIR=/run/user/1000 systemctl --user restart "$svc" 2>/dev/null \
+          && log "Restarted (rootless) $svc (secret: $changed changed)" \
+          || warn "(rootless) $svc restart failed"
+        break
+      fi
+    done
+  done
+  shopt -u nullglob
+}
+
 podman_login_ghcr() {
   local ghcr_env="$SECRETS_DST/ghcr.env"
   [ -f "$ghcr_env" ] || { warn "GHCR credentials not found, skipping podman login"; return; }
@@ -246,9 +397,24 @@ podman_login_ghcr() {
   fi
 }
 
+podman_login_ghcr_rootless() {
+  local ghcr_env="$SECRETS_DST/ghcr.env"
+  [ -f "$ghcr_env" ] || return
+  source "$ghcr_env"
+  [ -n "${GHCR_USERNAME:-}" ] && [ -n "${GHCR_TOKEN:-}" ] || return
+
+  [ "$CORE_SESSION_READY" = true ] || { warn "Skipping rootless GHCR login — core session not ready"; return; }
+
+  echo "$GHCR_TOKEN" | sudo -u core XDG_RUNTIME_DIR=/run/user/1000 \
+    podman login ghcr.io -u "$GHCR_USERNAME" --password-stdin 2>/dev/null \
+    && log "Logged in to ghcr.io as $GHCR_USERNAME (rootless)" \
+    || warn "podman login to ghcr.io (rootless) failed"
+}
+
 main() {
   ensure_age_key
   ensure_repo
+
   # Sync the sync script
   if ! cmp -s "$REPO_DIR/scripts/gitops-sync.sh" "$0"; then
     log "sync.sh changed in repo, updating and re-executing..."
@@ -258,19 +424,28 @@ main() {
   fi
 
   load_host_settings
+  wait_for_core_session
+
   if [ "$AGE_KEY_AVAILABLE" = true ]; then
     decrypt_secrets
+    sync_rootless_secrets
     podman_login_ghcr
+    podman_login_ghcr_rootless
   else
     log "Skipping secret decryption because age key is unavailable"
     SECRETS_CHANGED=()
   fi
+
   sync_quadlets
+  sync_rootless_quadlets
   sync_host_quadlets
+  sync_rootless_host_quadlets
   sync_sops_config
-  sync_caddy
+  sync_rootless_caddy
   reload_units
+  reload_rootless_units
   restart_secret_containers
+  restart_rootless_secret_containers
   log "Sync complete."
 }
 

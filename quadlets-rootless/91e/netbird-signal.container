@@ -12,11 +12,10 @@ PublishPort=127.0.0.1:10000:10000
 Network=caddy-net.network
 NoNewPrivileges=true
 DropCapability=ALL
-AddCapability=NET_BIND_SERVICE
 
 [Service]
 Restart=always
 RestartSec=10s
 
 [Install]
-WantedBy=multi-user.target default.target
+WantedBy=default.target

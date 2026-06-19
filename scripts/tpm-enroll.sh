@@ -88,7 +88,7 @@ printf 'coreos-netbird-age-v1' \
   | tpm2_hmac -c "$CHILD_CTX" -o "$SEED_FILE" /dev/stdin > /dev/null \
   || die "tpm2_hmac failed"
 
-SEED_HEX=$(od -An -tx1 "$SEED_FILE" | tr -d ' \n'')
+SEED_HEX=$(od -An -tx1 "$SEED_FILE" | tr -d ' \n')
 [ ${#SEED_HEX} -ge 64 ] || die "Seed too short (${#SEED_HEX} hex chars)"
 log "TPM2 seed derived"
 
