@@ -52,18 +52,6 @@ storage:
       mode: 448
 
   files:
-    # ── tpm-tools──────────────────────────────────────────────────────────
-    - path: /etc/rpm-ostree/origin.d/tpm-tools.yaml
-      mode: 0644
-      contents:
-        inline: |
-          packages:
-            - tpm2-tools
-            - age
-            - clevis
-            - clevis-luks
-            - clevis-dracut
-            
     # ── nftables───────────────────────────────────────────────────────────
     - path: /etc/nftables.conf
       mode: 0644
@@ -94,6 +82,7 @@ storage:
       contents:
         inline: |
           d /run/secrets 0700 root root -
+
     # ── gitops env ────────────────────────────────────────────────────────
     - path: /etc/gitops.env
       mode: 0644
@@ -148,6 +137,27 @@ storage:
 
 systemd:
   units:
+    - name: coreos-install-packages.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Layer packages via rpm-ostree
+        Wants=network-online.target
+        After=network-online.target
+        ConditionPathExists=!/var/lib/.coreos-install-package-installed
+        Before=coreos-tpm-enroll.service
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/bin/rpm-ostree install --apply-live --allow-inactive age python3
+        ExecStartPost=/usr/bin/touch /var/lib/.coreos-install-package-installed
+        StandardOutput=journal
+        StandardError=journal
+
+        [Install]
+        WantedBy=multi-user.target
+
     # ── /run/secrets tmpfs ────────────────────────────────────────────────
     - name: run-secrets.mount
       enabled: true
@@ -182,7 +192,7 @@ systemd:
         [Unit]
         Description=Enroll LUKS+TPM2 and seal age key via systemd-creds
         ConditionPathExists=!/var/lib/.tpm-enrolled
-        After=local-fs.target random-hostname.service
+        After=local-fs.target random-hostname.service coreos-install-packages.service
         Before=tpm-unseal-age.service
 
         [Service]

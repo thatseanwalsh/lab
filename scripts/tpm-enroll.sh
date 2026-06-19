@@ -88,7 +88,7 @@ printf 'coreos-netbird-age-v1' \
   | tpm2_hmac -c "$CHILD_CTX" -o "$SEED_FILE" /dev/stdin > /dev/null \
   || die "tpm2_hmac failed"
 
-SEED_HEX=$(xxd -p -c 256 "$SEED_FILE" | tr -d '\n')
+SEED_HEX=$(od -An -tx1 "$SEED_FILE" | tr -d ' \n'')
 [ ${#SEED_HEX} -ge 64 ] || die "Seed too short (${#SEED_HEX} hex chars)"
 log "TPM2 seed derived"
 
@@ -148,7 +148,7 @@ log "Sealing age key with systemd-creds (TPM2)..."
 printf '%s\n' "$AGE_PRIVATE" \
   | systemd-creds encrypt \
       --with-key=tpm2 \
-      --name=age.identity \
+      --name=age.identity.secure \
       - "$AGE_CREDS_FILE" \
   || die "systemd-creds encrypt failed"
 chmod 600 "$AGE_CREDS_FILE"

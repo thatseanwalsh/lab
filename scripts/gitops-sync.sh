@@ -190,26 +190,6 @@ sync_caddy() {
   fi
 }
 
-sync_firewalld() {
-  if compgen -G "$REPO_DIR/firewalld/*.xml" > /dev/null 2>&1; then
-    mkdir -p "$FIREWALLD_DST"
-    FW_CHANGED=false
-    shopt -s nullglob
-    for src in "$REPO_DIR"/firewalld/*.xml; do
-      [ -f "$src" ] || continue
-      dest="$FIREWALLD_DST/$(basename "$src")"
-      if install_if_changed "$src" "$dest" 644; then
-        log "Updated firewalld zone: $(basename "$src")"
-        FW_CHANGED=true
-      fi
-    done
-    shopt -u nullglob
-    if [ "$FW_CHANGED" = true ] && systemctl is-active firewalld.service &>/dev/null; then
-      firewall-cmd --reload && log "firewalld reloaded" || warn "firewalld reload failed"
-    fi
-  fi
-}
-
 reload_units() {
   if [ ${#CHANGED_UNITS[@]} -gt 0 ]; then
     log "systemctl daemon-reload (${#CHANGED_UNITS[@]} changed)"
