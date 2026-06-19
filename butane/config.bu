@@ -241,7 +241,7 @@ systemd:
         [Service]
         Type=oneshot
         RemainAfterExit=yes
-        Environment=SOPS_VERSION=v3.9.4
+        Environment=SOPS_VERSION=v3.13.1
         ExecStart=/bin/bash -c '\
           curl -sSfL \
             "https://github.com/getsops/sops/releases/download/${SOPS_VERSION}/sops-${SOPS_VERSION}.linux.amd64" \

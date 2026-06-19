@@ -100,7 +100,7 @@ decrypt_secrets() {
     tmp=$(mktemp "$SECRETS_DST/.tmp.XXXXXX")
     chmod 600 "$tmp"
 
-    if SOPS_AGE_KEY_FILE="$AGE_KEY" sops --decrypt "$enc_file" > "$tmp" 2>/dev/null; then
+    if SOPS_AGE_KEY_FILE="$AGE_KEY" sops --decrypt --input-type dotenv --output-type dotenv "$enc_file" > "$tmp" 2>/dev/null; then
       if ! cmp -s "$tmp" "$dest" 2>/dev/null; then
         mv "$tmp" "$dest"
         chmod 600 "$dest"
