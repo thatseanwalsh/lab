@@ -100,7 +100,16 @@ decrypt_secrets() {
     tmp=$(mktemp "$SECRETS_DST/.tmp.XXXXXX")
     chmod 600 "$tmp"
 
-    if SOPS_AGE_KEY_FILE="$AGE_KEY" sops --decrypt --input-type dotenv --output-type dotenv "$enc_file" > "$tmp" 2>/dev/null; then
+    case "$enc_file" in
+      *.env.enc|*.env)
+        SOPS_AGE_KEY_FILE="$AGE_KEY" sops --decrypt --input-type dotenv --output-type dotenv "$enc_file" > "$tmp" 2>/dev/null
+        ;;
+      *)
+        SOPS_AGE_KEY_FILE="$AGE_KEY" sops --decrypt "$enc_file" > "$tmp" 2>/dev/null
+        ;;
+    esac
+
+    if [ $? -eq 0 ]; then
       if ! cmp -s "$tmp" "$dest" 2>/dev/null; then
         mv "$tmp" "$dest"
         chmod 600 "$dest"
@@ -222,6 +231,22 @@ restart_secret_containers() {
   shopt -u nullglob
 }
 
+podman_login_ghcr() {
+  local ghcr_env="$SECRETS_DST/ghcr.env"
+  [ -f "$ghcr_env" ] || { warn "GHCR credentials not found, skipping podman login"; return; }
+
+  # shellcheck disable=SC1090
+  source "$ghcr_env"
+
+  if [ -n "${GHCR_USERNAME:-}" ] && [ -n "${GHCR_TOKEN:-}" ]; then
+    if echo "$GHCR_TOKEN" | podman login ghcr.io -u "$GHCR_USERNAME" --password-stdin 2>/dev/null; then
+      log "Logged in to ghcr.io as $GHCR_USERNAME"
+    else
+      warn "podman login to ghcr.io failed"
+    fi
+  fi
+}
+
 main() {
   ensure_age_key
   ensure_repo
@@ -239,6 +264,7 @@ main() {
   sync_firewalld
   reload_units
   restart_secret_containers
+  podman_login_ghcr
   log "Sync complete."
 }
 
