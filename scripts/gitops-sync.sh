@@ -14,7 +14,7 @@
 #   3. syncs quadlets → /etc/containers/systemd/
 #   4. syncs .sops.yaml → /etc/sops/.sops.yaml
 #   5. syncs Caddyfile → /etc/caddy/Caddyfile
-#   6. syncs firewalld/*.xml → /etc/firewalld/zones/
+#   6. syncs itself → /opt/gitops/sync.sh
 #   7. reloads changed units and secret-dependent containers
 
 set -euo pipefail
@@ -24,7 +24,6 @@ REPO_URL="${GITOPS_REPO_URL:-https://github.com/thatseanwalsh/lab.git}"
 BRANCH="${GITOPS_BRANCH:-main}"
 QUADLET_DST="/etc/containers/systemd"
 CADDY_DST="/etc/caddy"
-FIREWALLD_DST="/etc/firewalld/zones"
 SECRETS_DST="/run/secrets"
 AGE_KEY="/run/age.key"
 LOG_TAG="gitops-sync"
@@ -250,6 +249,14 @@ podman_login_ghcr() {
 main() {
   ensure_age_key
   ensure_repo
+  # Near the top of main(), after ensure_repo:
+  if ! cmp -s "$REPO_DIR/scripts/gitops-sync.sh" "$0"; then
+    log "sync.sh changed in repo, updating and re-executing..."
+    cp "$REPO_DIR/scripts/gitops-sync.sh" "$0"
+    chmod 750 "$0"
+    exec "$0" "$@"
+  fi
+
   load_host_settings
   if [ "$AGE_KEY_AVAILABLE" = true ]; then
     decrypt_secrets
@@ -262,7 +269,6 @@ main() {
   sync_host_quadlets
   sync_sops_config
   sync_caddy
-  sync_firewalld
   reload_units
   restart_secret_containers
   log "Sync complete."
