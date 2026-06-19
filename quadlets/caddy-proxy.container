@@ -7,7 +7,7 @@ After=network-online.target
 Wants=network-online.target
 
 [Container]
-Image=caddy:latest
+Image=docker.io/caddy:latest
 
 # Mount Caddyfile and data directory
 Volume=/etc/caddy/Caddyfile:/etc/caddy/Caddyfile:ro,z

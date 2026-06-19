@@ -9,7 +9,7 @@ Wants=network-online.target
 Requires=run-secrets.mount caddy-net.network netbird-data.volume
 
 [Container]
-Image=netbirdio/management:latest
+Image=docker.io/netbirdio/management:latest
 
 # Runtime secrets (decrypted from sops by gitops-sync.service)
 EnvironmentFile=/run/secrets/netbird.env

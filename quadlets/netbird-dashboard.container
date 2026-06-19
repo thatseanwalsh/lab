@@ -7,7 +7,7 @@ After=network-online.target
 Wants=network-online.target
 
 [Container]
-Image=netbirdio/dashboard:latest
+Image=docker.io/netbirdio/dashboard:latest
 PublishPort=127.0.0.1:3000:3000
 Network=caddy-net.network
 NoNewPrivileges=true
