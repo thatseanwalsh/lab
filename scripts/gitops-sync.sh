@@ -249,7 +249,7 @@ podman_login_ghcr() {
 main() {
   ensure_age_key
   ensure_repo
-  # Near the top of main(), after ensure_repo:
+  # Sync the sync script
   if ! cmp -s "$REPO_DIR/scripts/gitops-sync.sh" "$0"; then
     log "sync.sh changed in repo, updating and re-executing..."
     cp "$REPO_DIR/scripts/gitops-sync.sh" "$0"
