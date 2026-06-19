@@ -10,7 +10,7 @@
         ],
         "name": "core",
         "sshAuthorizedKeys": [
-          "sk-ssh-ed25519@openssh.com AAAAGnNrLXNzaC1lZDI1NTE5QG9wZW5zc2guY29tAAAAIIzbSZ+dMH+iUs1fWb9St9hzPBnc2IJ0769cCgoWlP8oAAAABHNzaDo"
+          "sk-ssh-ed25519@openssh.com AAAAGnNrLXNzaC1lZDI1NTE5QG9wZW5zc2guY29tAAAAIIzbSZ+dMH+iUs1fWb9St9hzPBnc2IJ0769cCgoWlP8oAAAABHNzaDo= ssh:"
         ]
       }
     ]
