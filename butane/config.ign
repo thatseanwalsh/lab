@@ -110,7 +110,7 @@
     ],
     "luks": [
       {
-        "device": "/dev/sda4",
+        "device": "/dev/disk/by-label/root",
         "name": "luks-root",
         "wipeVolume": true
       }
