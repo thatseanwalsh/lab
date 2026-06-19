@@ -44,12 +44,16 @@ storage:
       mode: 0700
     - path: /etc/firewalld/zones
       mode: 0750
-    - path: /run/secrets
-      mode: 0700
     - path: /etc/age
       mode: 448
 
   files:
+    # ── secrets ───────────────────────────────────────────────────────────
+    - path: /etc/tmpfiles.d/secrets.conf
+      mode: 0644
+      contents:
+        inline: |
+          d /run/secrets 0700 root root -
     # ── gitops env ────────────────────────────────────────────────────────
     - path: /etc/gitops.env
       mode: 0644

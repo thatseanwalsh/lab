@@ -1,6 +1,6 @@
 {
   "ignition": {
-    "version": "3.4.0"
+    "version": "3.6.0"
   },
   "passwd": {
     "users": [
@@ -46,15 +46,19 @@
         "mode": 488
       },
       {
-        "path": "/run/secrets",
-        "mode": 448
-      },
-      {
         "path": "/etc/age",
         "mode": 448
       }
     ],
     "files": [
+      {
+        "path": "/etc/tmpfiles.d/secrets.conf",
+        "contents": {
+          "compression": "",
+          "source": "data:,d%20%2Frun%2Fsecrets%200700%20root%20root%20-%0A"
+        },
+        "mode": 420
+      },
       {
         "path": "/etc/gitops.env",
         "contents": {
