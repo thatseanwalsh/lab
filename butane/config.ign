@@ -107,13 +107,6 @@
         },
         "mode": 420
       }
-    ],
-    "luks": [
-      {
-        "device": "/dev/disk/by-label/root",
-        "name": "luks-root",
-        "wipeVolume": true
-      }
     ]
   },
   "systemd": {
