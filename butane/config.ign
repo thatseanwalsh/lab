@@ -52,6 +52,14 @@
     ],
     "files": [
       {
+        "path": "/etc/nftables.conf",
+        "contents": {
+          "compression": "gzip",
+          "source": "data:;base64,H4sIAAAAAAAC/3yQYW6DMAyF//cU7wBM6iCwTj1NlhhhLcNWMNtQxd2n0Xa00srP5Pv8bD3zb4nAPRlaTkYZpx0QOs89uNfRljdgk9LV6ETeL1AzS2absD9CJXGYELPocZkJhsG8EWj4XcNDR7HIlLxRhA+B1BaPuUWSux9t0NO3dTGDw4d+NvcUmsUkSFroLbOgiCrZcEJZFjjsCzhXYb6VxrhKzlUFKvdyeKS41+e6fGrquqpXYf4rqZX85XN8VNMVbxS1ZsloG41f6D9J57POWfPuJwAA//+Sadtw0wEAAA=="
+        },
+        "mode": 420
+      },
+      {
         "path": "/etc/tmpfiles.d/secrets.conf",
         "contents": {
           "compression": "",
@@ -84,14 +92,6 @@
         "mode": 488
       },
       {
-        "path": "/etc/firewalld/zones/public.xml",
-        "contents": {
-          "compression": "gzip",
-          "source": "data:;base64,H4sIAAAAAAAC/4yT0W4aOxCG7/cp/rNXRAfYJMA5OUcLUZRUClJCaYCL9s7YA2vVa1u2l2R71YfoE/ZJKrNAaEvVcsV6PN/M/PM7v34pFTbkvDR6mF50z1OQ5kZIvR6mVVh1rtLrUZL/1ekkwEo6emZKicxWSyV596VUCXBHXDHHgtzQ4Qo+GU1YGYdQECYUltIJeHIbct0EeGSarUlgWWMtg7EeXz9/AQkZUJCjNrgpSxnaYFq81oUjZZjwYFUwJQuSM6XqbpIAM3IbycnDWNL/JwDgfYHtL6IdlSYQym3dknRAy5EPTvKAYPBRm2eN8dRDrmCN93Kp6GyLKUKwB8wtE6LGze3jG9zP59PO+QV4wZQivSb8DUdCOmqQMT47EPz3hPnDDC3BfLE0zIk2bqbjNrxca6bO4jhT48LxLP1+L6uEbRCRnPXQercY3zY99vr/Xm3jMTybLyZo7TW3RA5Cem425Ormev+/i8Fl55/BoDc4ZM0XT5OoL6vhmF5T7GJucBBpNruPUzF4S1yuJIc3leOE8bQdNYgCxF37ZhEgHVyNYJr+c1cpwoqVUtXDVNpNPx0lzXbyHYcJ4cj7Yfr+7eKpe3P3OJ50x9Osd5lmr1d3cM1KGqbeF0cxxjnZsPvOs1gw/o8GisvfNO1ZxaQ+DYKSmrpJpzNK8mjfmJ37wrgwmm79nmfNVzwX5LmTNkijRx+ocBUe2NLn2fF5lDA+HTz9ZL5Y5Ffz7LMapziKz5NgnXmpT+dFfzVCnAj4Y+TOOdE4e5Q1LkR4MNyoYVoJmyKeDdN+v3ecuzfU1l6/TY6OPJX9o83+oI1Xs0ZgnjW7+RYAAP//kCOhJrsEAAA="
-        },
-        "mode": 420
-      },
-      {
         "path": "/etc/sysctl.d/99-hardening.conf",
         "contents": {
           "compression": "gzip",
@@ -116,19 +116,8 @@
         "name": "run-secrets.mount"
       },
       {
-        "dropins": [
-          {
-            "contents": "[Unit]\n# Ensure firewalld starts before container-related units.\n# Use the generic containers target and podman.service instead\n# of listing individual services so new container units are\n# covered automatically.\nBefore=containers.target podman.service\n",
-            "name": "10-before-containers.conf"
-          }
-        ],
         "enabled": true,
-        "name": "firewalld.service"
-      },
-      {
-        "contents": "[Unit]\nDescription=Apply declarative firewalld rules\nAfter=firewalld.service network.target\nWants=firewalld.service\nConditionPathExists=!/var/lib/.firewalld-configured\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=/bin/bash -c 'firewall-cmd --reload \u0026\u0026 firewall-cmd --permanent --add-service=https \u0026\u0026 firewall-cmd --permanent --add-service=http \u0026\u0026 firewall-cmd --permanent --add-port=443/udp \u0026\u0026 firewall-cmd --permanent --add-port=3478/udp \u0026\u0026 firewall-cmd --permanent --add-port=49152-65535/udp \u0026\u0026 firewall-cmd --permanent --add-service=ssh \u0026\u0026 firewall-cmd --reload \u0026\u0026 touch /var/lib/.firewalld-configured'\nStandardOutput=journal\nStandardError=journal\n\n[Install]\nWantedBy=multi-user.target\n",
-        "enabled": true,
-        "name": "firewalld-configure.service"
+        "name": "nftables.service"
       },
       {
         "contents": "[Unit]\nDescription=Derive a stable hostname from hardware identifiers\nConditionPathExists=!/var/lib/.hostname-derived\nAfter=local-fs.target\nBefore=coreos-tpm-enroll.service\n\n[Service]\nType=oneshot\nExecStart=/usr/bin/bash -lc 'UUID=$(cat /sys/class/dmi/id/product_uuid 2\u003e/dev/null || cat /etc/machine-id); HASH=$(echo -n \"$UUID\" | sha256sum | cut -c1-3); hostnamectl set-hostname \"$HASH\"'\nExecStartPost=/usr/bin/touch /var/lib/.hostname-derived\nStandardOutput=journal\nStandardError=journal\n\n[Install]\nWantedBy=multi-user.target\n",

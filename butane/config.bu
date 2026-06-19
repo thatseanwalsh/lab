@@ -48,6 +48,30 @@ storage:
       mode: 448
 
   files:
+    # ── nftables───────────────────────────────────────────────────────────
+    - path: /etc/nftables.conf
+      mode: 0644
+      contents:
+        inline: |
+          table inet filter {
+            chain input {
+              type filter hook input priority 0; policy drop;
+              ct state established,related accept
+              iif lo accept
+              ip6 nexthdr icmpv6 accept
+              ip protocol icmp accept
+              tcp dport { 22, 80, 443 } accept
+              udp dport { 443, 3478 } accept
+              udp dport 49152-65535 accept
+            }
+            chain forward {
+              type filter hook forward priority 0; policy drop;
+            }
+            chain output {
+              type filter hook output priority 0; policy accept;
+            }
+          }
+          
     # ── secrets ───────────────────────────────────────────────────────────
     - path: /etc/tmpfiles.d/secrets.conf
       mode: 0644
@@ -74,15 +98,6 @@ storage:
       mode: 0750
       contents:
         local: scripts/tpm-enroll.sh
-
-    # ── firewalld: public zone — restrictive default ──────────────────────
-    # This file is managed by gitops; edit firewalld/public.xml in the repo.
-    # It is also placed here so firewalld is configured correctly from the
-    # very first boot, before gitops runs.
-    - path: /etc/firewalld/zones/public.xml
-      mode: 0644
-      contents:
-        local: firewalld/public.xml
 
     # ── sysctl hardening ─────────────────────────────────────────────────
     - path: /etc/sysctl.d/99-hardening.conf
@@ -121,41 +136,9 @@ systemd:
     - name: run-secrets.mount
       enabled: true
 
-    # ── firewalld ────────────────────────────────────────────────────────
-    # Fedora CoreOS ships firewalld; we just need to enable + start it.
-    # The zone file above is laid down by Ignition before first boot.
-    - name: firewalld.service
+    # ── nftables ──────────────────────────────────────────────────────────
+    - name: nftables.service
       enabled: true
-      # Drop-in: ensure firewalld starts before containers
-      dropins:
-        - name: 10-before-containers.conf
-          contents: |
-            [Unit]
-            # Ensure firewalld starts before container-related units.
-            # Use the generic containers target and podman.service instead
-            # of listing individual services so new container units are
-            # covered automatically.
-            Before=containers.target podman.service
-
-    # ── Apply firewalld rules after first network ─────────────────────────
-    - name: firewalld-configure.service
-      enabled: true
-      contents: |
-        [Unit]
-        Description=Apply declarative firewalld rules
-        After=firewalld.service network.target
-        Wants=firewalld.service
-        ConditionPathExists=!/var/lib/.firewalld-configured
-
-        [Service]
-        Type=oneshot
-        RemainAfterExit=yes
-        ExecStart=/bin/bash -c 'firewall-cmd --reload && firewall-cmd --permanent --add-service=https && firewall-cmd --permanent --add-service=http && firewall-cmd --permanent --add-port=443/udp && firewall-cmd --permanent --add-port=3478/udp && firewall-cmd --permanent --add-port=49152-65535/udp && firewall-cmd --permanent --add-service=ssh && firewall-cmd --reload && touch /var/lib/.firewalld-configured'
-        StandardOutput=journal
-        StandardError=journal
-
-        [Install]
-        WantedBy=multi-user.target
 
     # ── Hardware-derived hostname service ─────────────────────────────────
     - name: random-hostname.service
