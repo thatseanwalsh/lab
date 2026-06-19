@@ -37,62 +37,7 @@ mkdir -p "$AGE_CREDS_DIR"
 chmod 700 "$AGE_CREDS_DIR"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# PHASE 1 — LUKS binding via Clevis
-# ─────────────────────────────────────────────────────────────────────────────
-
-log "=== Phase 1: LUKS TPM2 binding ==="
-
-tpm2_getcap properties-fixed &>/dev/null || die "TPM2 not accessible"
-log "TPM2 detected"
-
-LUKS_DEV=""
-for dev in /dev/nvme?n? /dev/sd? /dev/vd?; do
-  [ -b "$dev" ] || continue
-  cryptsetup isLuks "$dev" 2>/dev/null && { LUKS_DEV="$dev"; break; }
-done
-[ -n "$LUKS_DEV" ] || die "No LUKS device found"
-log "LUKS device: $LUKS_DEV"
-
-LUKS_KEYFILE=""
-for kf in /etc/luks/*.key /etc/luks/root /etc/luks/key; do
-  [ -f "$kf" ] && { LUKS_KEYFILE="$kf"; break; }
-done
-[ -n "$LUKS_KEYFILE" ] || \
-  LUKS_KEYFILE=$(find /etc/luks -type f 2>/dev/null | head -1)
-[ -n "$LUKS_KEYFILE" ] || die "LUKS key file not found under /etc/luks/"
-log "LUKS key file: $LUKS_KEYFILE"
-
-log "Binding LUKS to TPM2 PCRs 0,7,8,9..."
-clevis luks bind -d "$LUKS_DEV" tpm2 "$PCR_POLICY" \
-  -- -d "$LUKS_KEYFILE" \
-  || die "clevis luks bind failed"
-log "LUKS TPM2 binding complete"
-
-# Enroll recovery key into LUKS slot 2
-RECOVERY_KEY=$(tr -dc 'A-Za-z0-9!@#%^&*' < /dev/urandom | head -c 52)
-echo -n "$RECOVERY_KEY" | cryptsetup luksAddKey \
-  --key-file "$LUKS_KEYFILE" \
-  --key-slot 2 \
-  "$LUKS_DEV" \
-  || die "Failed to enroll recovery key"
-
-log "========================================================"
-log "  LUKS RECOVERY KEY — WRITE THIS DOWN NOW               "
-log "  Store offline. Only fallback if TPM2 seal breaks.     "
-log "========================================================"
-log "  $RECOVERY_KEY"
-log "========================================================"
-unset RECOVERY_KEY
-
-if command -v dracut &>/dev/null; then
-  log "Regenerating initramfs with clevis-tpm2..."
-  dracut -f --kver "$(uname -r)" \
-    --add "clevis clevis-pin-tpm2 tpm2-tss" \
-    || log "WARNING: dracut regeneration failed"
-fi
-
-# ─────────────────────────────────────────────────────────────────────────────
-# PHASE 2 — Derive age keypair from TPM2, seal with systemd-creds
+# Derive age keypair from TPM2, seal with systemd-creds
 # ─────────────────────────────────────────────────────────────────────────────
 #
 # Derivation: TPM2 endorsement hierarchy seed → primary key → child HMAC key

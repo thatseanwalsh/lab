@@ -28,6 +28,10 @@ passwd:
       groups:
         - wheel
 
+boot_device:
+  luks:
+    tpm2: true
+
 storage:
   directories:
     - path: /etc/containers/systemd
@@ -48,6 +52,18 @@ storage:
       mode: 448
 
   files:
+    # ── tpm-tools──────────────────────────────────────────────────────────
+    - path: /etc/rpm-ostree/origin.d/tpm-tools.yaml
+      mode: 0644
+      contents:
+        inline: |
+          packages:
+            - tpm2-tools
+            - age
+            - clevis
+            - clevis-luks
+            - clevis-dracut
+            
     # ── nftables───────────────────────────────────────────────────────────
     - path: /etc/nftables.conf
       mode: 0644
