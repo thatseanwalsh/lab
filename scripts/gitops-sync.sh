@@ -253,6 +253,7 @@ main() {
   load_host_settings
   if [ "$AGE_KEY_AVAILABLE" = true ]; then
     decrypt_secrets
+    podman_login_ghcr
   else
     log "Skipping secret decryption because age key is unavailable"
     SECRETS_CHANGED=()
@@ -264,7 +265,6 @@ main() {
   sync_firewalld
   reload_units
   restart_secret_containers
-  podman_login_ghcr
   log "Sync complete."
 }
 
