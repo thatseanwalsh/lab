@@ -46,8 +46,6 @@ storage:
       mode: 0755
     - path: /etc/sops
       mode: 0700
-    - path: /etc/firewalld/zones
-      mode: 0750
     - path: /etc/age
       mode: 448
 
@@ -178,7 +176,7 @@ systemd:
 
         [Service]
         Type=oneshot
-        ExecStart=/usr/bin/bash -lc 'UUID=$(cat /sys/class/dmi/id/product_uuid 2>/dev/null || cat /etc/machine-id); HASH=$(echo -n "$UUID" | sha256sum | cut -c1-3); hostnamectl set-hostname "$HASH"'
+        ExecStart=/usr/bin/bash -lc 'UUID=$(cat /sys/class/dmi/id/product_uuid 2>/dev/null || cat /etc/machine-id); HASH=$(echo -n "$UUID" | cut -c1-3); hostnamectl set-hostname "$HASH"'
         ExecStartPost=/usr/bin/touch /var/lib/.hostname-derived
         StandardOutput=journal
         StandardError=journal

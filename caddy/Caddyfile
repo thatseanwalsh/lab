@@ -5,7 +5,7 @@
 {
   # Global options
   # Set your contact email (replace YOUR_DOMAIN below).
-  email engr@zehru.com
+  email mgmt+acme@zehru.com
   # Uncomment to use ZeroSSL instead of Let's Encrypt:
   # acme_ca https://acme.zerossl.com/v2/DV90
 
@@ -22,26 +22,28 @@
 # Note: do NOT store secrets in this repo; set the token in your container or
 # systemd unit (quadlet) environment instead.
 
-# ── Dashboard (WebUI) ──────────────────────────────────────────────────
-netbird.zehru.com, *.zehru.com {
-  # TLS auto via ACME using Cloudflare DNS for wildcard certs (requires CLOUDFLARE_API_TOKEN)
-  tls {
-    dns cloudflare
-    protocols tls1.2 tls1.3
-  }
-
-  # Security headers
+(common_headers) {
   header {
     Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
     X-Content-Type-Options "nosniff"
     X-Frame-Options "DENY"
     X-XSS-Protection "1; mode=block"
     Referrer-Policy "strict-origin-when-cross-origin"
-    Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';"
+    Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://api.zehru.com https://signal.zehru.com wss://signal.zehru.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self';"
     -Server
   }
+}
 
-  # Dashboard UI
+*.zehru.com, zehru.com {
+  tls {
+    dns cloudflare
+    protocols tls1.2 tls1.3
+  }
+}
+
+# ── Dashboard (WebUI) ──────────────────────────────────────────────────
+netbird.zehru.com {
+  import common_headers
   reverse_proxy localhost:3000 {
     health_uri /
     health_interval 30s
@@ -49,18 +51,12 @@ netbird.zehru.com, *.zehru.com {
 }
 
 # ── Management API (REST + gRPC) ───────────────────────────────────────
-api.zehru.com, *.zehru.com {
-  tls {
-    dns cloudflare
-    protocols tls1.2 tls1.3
+api.zehru.com {
+  import common_headers
+  reverse_proxy localhost:8080 {
+    health_uri /api/v1/groups
+    health_interval 30s
   }
-
-  header {
-    Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-    -Server
-  }
-
-  # gRPC traffic (used by netbird clients)
   @grpc {
     protocol grpc
   }
@@ -69,26 +65,11 @@ api.zehru.com, *.zehru.com {
       versions h2c
     }
   }
-
-  # REST API
-  reverse_proxy localhost:8080 {
-    health_uri /api/v1/groups
-    health_interval 30s
-  }
 }
 
 # ── Signal server ──────────────────────────────────────────────────────
-signal.zehru.com, *.zehru.com {
-  tls {
-    dns cloudflare
-    protocols tls1.2 tls1.3
-  }
-
-  header {
-    -Server
-  }
-
-  # Signal is gRPC only
+signal.zehru.com {
+  import common_headers
   reverse_proxy localhost:10000 {
     transport http {
       versions h2c
