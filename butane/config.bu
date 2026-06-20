@@ -250,6 +250,7 @@ systemd:
         [Unit]
         Description=Enroll LUKS+TPM2 and seal age key via systemd-creds
         ConditionPathExists=!/var/lib/.tpm-enrolled
+        Requires=coreos-install-packages.service
         After=local-fs.target random-hostname.service coreos-install-packages.service
         Before=tpm-unseal-age.service
 
@@ -321,8 +322,9 @@ systemd:
         [Unit]
         Description=GitOps: sync quadlets, secrets, caddy from git
         # tpm-unseal-age places /run/age.key before this runs
+        Requires=tpm-unseal-age.service install-sops.service enable-linger.service
         After=network-online.target tpm-unseal-age.service install-sops.service enable-linger.service
-        Wants=network-online.target tpm-unseal-age.service install-sops.service enable-linger.service
+        Wants=network-online.target
 
         [Service]
         Type=oneshot

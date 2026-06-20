@@ -194,7 +194,7 @@
         "name": "random-hostname.service"
       },
       {
-        "contents": "[Unit]\nDescription=Enroll LUKS+TPM2 and seal age key via systemd-creds\nConditionPathExists=!/var/lib/.tpm-enrolled\nAfter=local-fs.target random-hostname.service coreos-install-packages.service\nBefore=tpm-unseal-age.service\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=/usr/local/bin/tpm-enroll.sh\nStandardOutput=journal\nStandardError=journal\n\n[Install]\nWantedBy=multi-user.target\n",
+        "contents": "[Unit]\nDescription=Enroll LUKS+TPM2 and seal age key via systemd-creds\nConditionPathExists=!/var/lib/.tpm-enrolled\nRequires=coreos-install-packages.service\nAfter=local-fs.target random-hostname.service coreos-install-packages.service\nBefore=tpm-unseal-age.service\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=/usr/local/bin/tpm-enroll.sh\nStandardOutput=journal\nStandardError=journal\n\n[Install]\nWantedBy=multi-user.target\n",
         "enabled": true,
         "name": "coreos-tpm-enroll.service"
       },
@@ -209,7 +209,7 @@
         "name": "install-sops.service"
       },
       {
-        "contents": "[Unit]\nDescription=GitOps: sync quadlets, secrets, caddy from git\n# tpm-unseal-age places /run/age.key before this runs\nAfter=network-online.target tpm-unseal-age.service install-sops.service enable-linger.service\nWants=network-online.target tpm-unseal-age.service install-sops.service enable-linger.service\n\n[Service]\nType=oneshot\nEnvironmentFile=/etc/gitops.env\nExecStart=/opt/gitops/sync.sh\nStandardOutput=journal\nStandardError=journal\n\n[Install]\nWantedBy=multi-user.target\n",
+        "contents": "[Unit]\nDescription=GitOps: sync quadlets, secrets, caddy from git\n# tpm-unseal-age places /run/age.key before this runs\nRequires=tpm-unseal-age.service install-sops.service enable-linger.service\nAfter=network-online.target tpm-unseal-age.service install-sops.service enable-linger.service\nWants=network-online.target\n\n[Service]\nType=oneshot\nEnvironmentFile=/etc/gitops.env\nExecStart=/opt/gitops/sync.sh\nStandardOutput=journal\nStandardError=journal\n\n[Install]\nWantedBy=multi-user.target\n",
         "enabled": true,
         "name": "gitops-sync.service"
       },
