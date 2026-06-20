@@ -59,12 +59,12 @@ storage:
         name: core
       group:
         name: core
-    - path: /home/core/.local/share/containers/storage
-      mode: 0755
-      user:
-        name: core
-      group:
-        name: core
+  #  - path: /home/core/.local/share/containers/storage
+  #    mode: 0755
+  #    user:
+  #      name: core
+  #    group:
+  #      name: core
     - path: /home/core/var/lib/netbird-server
       mode: 0700
       user:
