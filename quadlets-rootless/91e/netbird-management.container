@@ -4,9 +4,9 @@
 
 [Unit]
 Description=Netbird Management Server
-After=network-online.target run-secrets.mount
+After=network-online.target
 Wants=network-online.target
-Requires=run-secrets.mount caddy-net.network netbird-data.volume
+Requires=caddy-net.network netbird-data.volume
 
 [Container]
 Image=docker.io/netbirdio/management:latest

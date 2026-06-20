@@ -34,28 +34,62 @@ boot_device:
 
 storage:
   directories:
-    - path: /etc/containers/systemd
-      mode: 0755
-    - path: /etc/caddy
-      mode: 0750
-    - path: /var/lib/netbird-server
-      mode: 0700
-    - path: /var/lib/caddy
-      mode: 0700
+    # ── Root-side (always needed for gitops, secrets, sops, age) ──────────
     - path: /opt/gitops
       mode: 0755
     - path: /etc/sops
       mode: 0700
     - path: /etc/age
       mode: 448
+
+    # ── Root quadlets (for hosts/services that choose to run as root) ─────
+    - path: /etc/containers/systemd
+      mode: 0755
+
+    # ── Rootless quadlets and data (core-owned) ────────────────────────────
     - path: /home/core/caddy
       mode: 0755
       user:
         name: core
       group:
         name: core
+    - path: /home/core/.config/containers/systemd
+      mode: 0755
+      user:
+        name: core
+      group:
+        name: core
+    - path: /home/core/.local/share/containers/storage
+      mode: 0755
+      user:
+        name: core
+      group:
+        name: core
+    - path: /home/core/var/lib/netbird-server
+      mode: 0700
+      user:
+        name: core
+      group:
+        name: core
+    - path: /home/core/var/lib/caddy
+      mode: 0700
+      user:
+        name: core
+      group:
+        name: core
 
   files:
+    # ── subuid and subgid ───────────────────────────────────────────────────
+    - path: /etc/subuid
+      mode: 0644
+      contents:
+        inline: |
+          core:100000:65536
+    - path: /etc/subgid
+      mode: 0644
+      contents:
+        inline: |
+          core:100000:65536
     # ── nftables───────────────────────────────────────────────────────────
     - path: /etc/nftables.conf
       mode: 0644
@@ -287,7 +321,7 @@ systemd:
         [Unit]
         Description=GitOps: sync quadlets, secrets, caddy from git
         # tpm-unseal-age places /run/age.key before this runs
-        After=network-online.target tpm-unseal-age.service install-sops.service
+        After=network-online.target tpm-unseal-age.service install-sops.service enable-linger.service
         Wants=network-online.target tpm-unseal-age.service install-sops.service enable-linger.service
 
         [Service]
