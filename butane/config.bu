@@ -8,7 +8,7 @@ version: 1.7.0
 # All key material is derived on-device and unlocked only after boot.
 #
 # What happens on first boot:
-#   1. firewalld starts using the embedded public zone.
+#   1. nftables starts using the embedded public zone.
 #   2. sops is installed from GitHub releases.
 #   3. random-hostname.service derives a stable hostname from hardware.
 #   4. coreos-tpm-enroll.service binds LUKS to TPM and seals the age key.
@@ -113,13 +113,6 @@ storage:
               type filter hook output priority 0; policy accept;
             }
           }
-          
-    # ── secrets ───────────────────────────────────────────────────────────
-    - path: /etc/tmpfiles.d/secrets.conf
-      mode: 0644
-      contents:
-        inline: |
-          d /run/secrets 0700 root root -
 
     # ── gitops env ────────────────────────────────────────────────────────
     - path: /etc/gitops.env
@@ -208,7 +201,7 @@ systemd:
         [Service]
         Type=oneshot
         RemainAfterExit=yes
-        ExecStart=/usr/bin/rpm-ostree install --apply-live --allow-inactive age python3
+        ExecStart=/usr/bin/rpm-ostree install --apply-live --allow-inactive age python3 tpm2-tools
         ExecStartPost=/usr/bin/touch /var/lib/.coreos-install-package-installed
         StandardOutput=journal
         StandardError=journal
@@ -236,7 +229,7 @@ systemd:
 
         [Service]
         Type=oneshot
-        ExecStart=/usr/bin/bash -lc 'UUID=$(cat /sys/class/dmi/id/product_uuid 2>/dev/null || cat /etc/machine-id); HASH=$(echo -n "$UUID" | cut -c1-3); hostnamectl set-hostname "$HASH"'
+        ExecStart=/usr/bin/bash -lc 'UUID=$(cat /sys/class/dmi/id/product_uuid 2>/dev/null || cat /etc/machine-id); HASH=$(echo -n "$UUID" | cut -c1-5); hostnamectl set-hostname "$HASH"'
         ExecStartPost=/usr/bin/touch /var/lib/.hostname-derived
         StandardOutput=journal
         StandardError=journal
