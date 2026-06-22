@@ -53,18 +53,30 @@ storage:
         name: core
       group:
         name: core
+    - path: /home/core/.config
+      mode: 0755
+      user:
+        name: core
+      group:
+        name: core
+    - path: /home/core/.config/containers
+      mode: 0755
+      user:
+        name: core
+      group:
+        name: core
     - path: /home/core/.config/containers/systemd
       mode: 0755
       user:
         name: core
       group:
         name: core
-  #  - path: /home/core/.local/share/containers/storage
-  #    mode: 0755
-  #    user:
-  #      name: core
-  #    group:
-  #      name: core
+   # - path: /home/core/.local/share/containers/storage
+   #   mode: 0755
+   #   user:
+   #     name: core
+   #   group:
+   #     name: core
     - path: /home/core/var/lib/netbird-server
       mode: 0700
       user:
@@ -231,7 +243,7 @@ systemd:
 
         [Service]
         Type=oneshot
-        ExecStart=/usr/bin/bash -lc 'UUID=$(cat /sys/class/dmi/id/product_uuid 2>/dev/null || cat /etc/machine-id); HASH=$(echo -n "$UUID" | cut -c1-5); hostnamectl set-hostname "$HASH"'
+        ExecStart=/usr/bin/bash -lc 'UUID=$(cat /sys/class/dmi/id/product_uuid 2>/dev/null || cat /etc/machine-id); HASH=$(echo -n "$UUID" | cut -c1-3); hostnamectl set-hostname "$HASH"'
         ExecStartPost=/usr/bin/touch /var/lib/.hostname-derived
         StandardOutput=journal
         StandardError=journal

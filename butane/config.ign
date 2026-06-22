@@ -47,6 +47,26 @@
         "group": {
           "name": "core"
         },
+        "path": "/home/core/.config",
+        "user": {
+          "name": "core"
+        },
+        "mode": 493
+      },
+      {
+        "group": {
+          "name": "core"
+        },
+        "path": "/home/core/.config/containers",
+        "user": {
+          "name": "core"
+        },
+        "mode": 493
+      },
+      {
+        "group": {
+          "name": "core"
+        },
         "path": "/home/core/.config/containers/systemd",
         "user": {
           "name": "core"
@@ -183,7 +203,7 @@
         "name": "nftables.service"
       },
       {
-        "contents": "[Unit]\nDescription=Derive a stable hostname from hardware identifiers\nConditionPathExists=!/var/lib/.hostname-derived\nAfter=local-fs.target\nBefore=coreos-tpm-enroll.service\n\n[Service]\nType=oneshot\nExecStart=/usr/bin/bash -lc 'UUID=$(cat /sys/class/dmi/id/product_uuid 2\u003e/dev/null || cat /etc/machine-id); HASH=$(echo -n \"$UUID\" | cut -c1-5); hostnamectl set-hostname \"$HASH\"'\nExecStartPost=/usr/bin/touch /var/lib/.hostname-derived\nStandardOutput=journal\nStandardError=journal\n\n[Install]\nWantedBy=multi-user.target\n",
+        "contents": "[Unit]\nDescription=Derive a stable hostname from hardware identifiers\nConditionPathExists=!/var/lib/.hostname-derived\nAfter=local-fs.target\nBefore=coreos-tpm-enroll.service\n\n[Service]\nType=oneshot\nExecStart=/usr/bin/bash -lc 'UUID=$(cat /sys/class/dmi/id/product_uuid 2\u003e/dev/null || cat /etc/machine-id); HASH=$(echo -n \"$UUID\" | cut -c1-3); hostnamectl set-hostname \"$HASH\"'\nExecStartPost=/usr/bin/touch /var/lib/.hostname-derived\nStandardOutput=journal\nStandardError=journal\n\n[Install]\nWantedBy=multi-user.target\n",
         "enabled": true,
         "name": "random-hostname.service"
       },
