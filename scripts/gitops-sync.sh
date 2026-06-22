@@ -388,27 +388,44 @@ podman_login_ghcr() {
   # shellcheck disable=SC1090
   source "$ghcr_env"
 
-  if [ -n "${GHCR_USERNAME:-}" ] && [ -n "${GHCR_TOKEN:-}" ]; then
+  [ -n "${GHCR_USERNAME:-}" ] && [ -n "${GHCR_TOKEN:-}" ] || return
+
+  local tries=0
+  while [ $tries -lt 5 ]; do
     if echo "$GHCR_TOKEN" | podman login ghcr.io -u "$GHCR_USERNAME" --password-stdin 2>/dev/null; then
       log "Logged in to ghcr.io as $GHCR_USERNAME"
-    else
-      warn "podman login to ghcr.io failed"
+      return
     fi
-  fi
+    tries=$((tries + 1))
+    warn "GHCR login attempt $tries failed, retrying in 5s..."
+    sleep 5
+  done
+  warn "podman login to ghcr.io failed after $tries attempts"
 }
 
 podman_login_ghcr_rootless() {
   local ghcr_env="$SECRETS_DST/ghcr.env"
-  [ -f "$ghcr_env" ] || return
+  [ -f "$ghcr_env" ] || return 0
   source "$ghcr_env"
-  [ -n "${GHCR_USERNAME:-}" ] && [ -n "${GHCR_TOKEN:-}" ] || return
+  [ -n "${GHCR_USERNAME:-}" ] && [ -n "${GHCR_TOKEN:-}" ] || return 0
 
-  [ "$CORE_SESSION_READY" = true ] || { warn "Skipping rootless GHCR login — core session not ready"; return; }
+  [ "$CORE_SESSION_READY" = true ] || { warn "Skipping rootless GHCR login — core session not ready"; return 0; }
 
-  echo "$GHCR_TOKEN" | sudo -u core XDG_RUNTIME_DIR=/run/user/1000 \
-    podman login ghcr.io -u "$GHCR_USERNAME" --password-stdin 2>/dev/null \
-    && log "Logged in to ghcr.io as $GHCR_USERNAME (rootless)" \
-    || warn "podman login to ghcr.io (rootless) failed"
+  local tries=0
+  while [ $tries -lt 5 ]; do
+    if echo "$GHCR_TOKEN" | sudo -u core \
+        XDG_RUNTIME_DIR=/run/user/1000 \
+        HOME=/home/core \
+        /usr/bin/podman login ghcr.io -u "$GHCR_USERNAME" --password-stdin 2>/dev/null; then
+      log "Logged in to ghcr.io as $GHCR_USERNAME (rootless)"
+      return 0
+    fi
+    tries=$((tries + 1))
+    warn "Rootless GHCR login attempt $tries failed, retrying in 5s..."
+    sleep 5
+  done
+  warn "podman login to ghcr.io (rootless) failed after $tries attempts — continuing anyway"
+  return 0  # never let this kill the script
 }
 
 main() {
