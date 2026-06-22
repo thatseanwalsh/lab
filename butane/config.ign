@@ -76,6 +76,7 @@
     ],
     "files": [
       {
+        "overwrite": true,
         "path": "/etc/subuid",
         "contents": {
           "compression": "",
@@ -84,6 +85,7 @@
         "mode": 420
       },
       {
+        "overwrite": true,
         "path": "/etc/subgid",
         "contents": {
           "compression": "",

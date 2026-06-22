@@ -82,11 +82,13 @@ storage:
     # ── subuid and subgid ───────────────────────────────────────────────────
     - path: /etc/subuid
       mode: 0644
+      overwrite: true
       contents:
         inline: |
           core:100000:65536
     - path: /etc/subgid
       mode: 0644
+      overwrite: true
       contents:
         inline: |
           core:100000:65536
