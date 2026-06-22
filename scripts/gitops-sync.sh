@@ -103,9 +103,9 @@ install_if_changed() {
   mkdir -p "$(dirname "$dst")"
   if ! cmp -s "$src" "$dst" 2>/dev/null; then
     install -m "$mode" "$src" "$dst"
-    return 0
+    echo "changed"  # signal change via stdout instead of return code
   fi
-  return 1
+  return 0  # always succeed
 }
 
 decrypt_secrets() {
@@ -152,7 +152,7 @@ decrypt_secrets() {
 }
 
 sync_rootless_secrets() {
-  [ "$CORE_SESSION_READY" = true ] || { warn "Skipping rootless secrets sync — core session not ready"; return; }
+  [ "$CORE_SESSION_READY" = true ] || { warn "Skipping rootless secrets sync — core session not ready"; return 0; }
 
   local rootless_secrets_dst="/run/user/1000/secrets"
   mkdir -p "$rootless_secrets_dst"
@@ -184,7 +184,7 @@ sync_quadlets() {
     for src in "$REPO_DIR"/quadlets/*."$ext"; do
       [ -f "$src" ] || continue
       dst="$QUADLET_DST/$(basename "$src")"
-      if install_if_changed "$src" "$dst" 644; then
+      if [ "$(install_if_changed "$src" "$dst" 644)" = "changed" ]; then
         CHANGED_UNITS+=("$(basename "$src")")
         log "Updated quadlet: $(basename "$src")"
       fi
@@ -207,11 +207,11 @@ sync_quadlets() {
 
 sync_rootless_quadlets() {
   ROOTLESS_CHANGED=()
-  [ "$CORE_SESSION_READY" = true ] || { warn "Skipping rootless quadlet sync — core session not ready"; return; }
+  [ "$CORE_SESSION_READY" = true ] || { warn "Skipping rootless quadlet sync — core session not ready"; return 0; }
 
   local dst="/home/core/.config/containers/systemd"
   mkdir -p "$dst"
-  chown core:core "$dst" -R
+  chown core:core "$dst" -R || true
 
   shopt -s nullglob
   for ext in container network volume pod kube image; do
@@ -229,18 +229,18 @@ sync_rootless_quadlets() {
 }
 
 sync_rootless_host_quadlets() {
-  [ "$CORE_SESSION_READY" = true ] || { warn "Skipping rootless host quadlet sync — core session not ready"; return; }
+  [ "$CORE_SESSION_READY" = true ] || { warn "Skipping rootless host quadlet sync — core session not ready"; return 0; }
 
   local host_dir="$HOST_QUADLET_DIR_ROOTLESS"
   local dst="/home/core/.config/containers/systemd"
 
   if [ ! -d "$host_dir" ]; then
     log "No host-specific rootless quadlets for $HOSTNAME"
-    return
+    return 0
   fi
 
   mkdir -p "$dst"
-  chown core:core "$dst"
+  chown core:core "$dst" || true
 
   shopt -s nullglob
   for ext in container network volume pod kube image; do
@@ -258,8 +258,8 @@ sync_rootless_host_quadlets() {
 }
 
 reload_rootless_units() {
-  [ ${#ROOTLESS_CHANGED[@]} -gt 0 ] || return
-  [ "$CORE_SESSION_READY" = true ] || { warn "Skipping rootless unit reload — core session not ready"; return; }
+  [ ${#ROOTLESS_CHANGED[@]} -gt 0 ] || return 0
+  [ "$CORE_SESSION_READY" = true ] || { warn "Skipping rootless unit reload — core session not ready"; return 0; }
 
   log "Reloading rootless units for core (${#ROOTLESS_CHANGED[@]} changed)"
   sudo -u core XDG_RUNTIME_DIR=/run/user/1000 systemctl --user daemon-reload
@@ -274,7 +274,7 @@ reload_rootless_units() {
 sync_host_quadlets() {
   if [ ! -d "$HOST_QUADLET_DIR" ]; then
     log "No host-specific quadlets for $HOSTNAME"
-    return
+    return 0
   fi
 
   shopt -s nullglob
@@ -282,7 +282,7 @@ sync_host_quadlets() {
     for src in "$HOST_QUADLET_DIR"/*."$ext"; do
       [ -f "$src" ] || continue
       dst="$QUADLET_DST/$(basename "$src")"
-      if install_if_changed "$src" "$dst" 644; then
+      if [ "$(install_if_changed "$src" "$dst" 644)" = "changed" ]; then
         CHANGED_UNITS+=("$(basename "$src")")
         log "Updated host quadlet: $(basename "$src")"
       fi
@@ -293,19 +293,19 @@ sync_host_quadlets() {
 
 sync_sops_config() {
   if [ -f "$REPO_DIR/.sops.yaml" ]; then
-    if install_if_changed "$REPO_DIR/.sops.yaml" /etc/sops/.sops.yaml 644; then
+    if [ "$(install_if_changed "$REPO_DIR/.sops.yaml" /etc/sops/.sops.yaml 644)" = "changed" ]; then
       log "Updated /etc/sops/.sops.yaml"
     fi
   fi
 }
 
 sync_rootless_caddy() {
-  [ "$CORE_SESSION_READY" = true ] || { warn "Skipping rootless Caddyfile sync — core session not ready"; return; }
+  [ "$CORE_SESSION_READY" = true ] || { warn "Skipping rootless Caddyfile sync — core session not ready"; return 0; }
 
   if [ -f "$REPO_DIR/caddy/Caddyfile" ]; then
     local dst="/home/core/caddy/Caddyfile"
     mkdir -p "$(dirname "$dst")"
-    chown core:core "$(dirname "$dst")"
+    chown core:core "$(dirname "$dst")" || true
 
     if ! cmp -s "$REPO_DIR/caddy/Caddyfile" "$dst" 2>/dev/null; then
       install -o core -g core -m 644 "$REPO_DIR/caddy/Caddyfile" "$dst"
@@ -336,7 +336,7 @@ reload_units() {
 
 restart_secret_containers() {
   if [ ${#SECRETS_CHANGED[@]} -eq 0 ]; then
-    return
+    return 0
   fi
   log "Changed secrets: ${SECRETS_CHANGED[*]}"
   shopt -s nullglob
@@ -357,9 +357,9 @@ restart_secret_containers() {
 
 restart_rootless_secret_containers() {
   if [ ${#SECRETS_CHANGED[@]} -eq 0 ]; then
-    return
+    return 0
   fi
-  [ "$CORE_SESSION_READY" = true ] || { warn "Skipping rootless secret-container restart — core session not ready"; return; }
+  [ "$CORE_SESSION_READY" = true ] || { warn "Skipping rootless secret-container restart — core session not ready"; return 0; }
 
   log "Changed secrets: ${SECRETS_CHANGED[*]}"
   local dst="/home/core/.config/containers/systemd"
@@ -383,24 +383,25 @@ restart_rootless_secret_containers() {
 
 podman_login_ghcr() {
   local ghcr_env="$SECRETS_DST/ghcr.env"
-  [ -f "$ghcr_env" ] || { warn "GHCR credentials not found, skipping podman login"; return; }
+  [ -f "$ghcr_env" ] || { warn "GHCR credentials not found, skipping podman login"; return 0; }
 
   # shellcheck disable=SC1090
   source "$ghcr_env"
 
-  [ -n "${GHCR_USERNAME:-}" ] && [ -n "${GHCR_TOKEN:-}" ] || return
+  [ -n "${GHCR_USERNAME:-}" ] && [ -n "${GHCR_TOKEN:-}" ] || return 0
 
   local tries=0
   while [ $tries -lt 5 ]; do
     if echo "$GHCR_TOKEN" | podman login ghcr.io -u "$GHCR_USERNAME" --password-stdin 2>/dev/null; then
       log "Logged in to ghcr.io as $GHCR_USERNAME"
-      return
+      return 0
     fi
     tries=$((tries + 1))
     warn "GHCR login attempt $tries failed, retrying in 5s..."
     sleep 5
   done
-  warn "podman login to ghcr.io failed after $tries attempts"
+  warn "podman login to ghcr.io failed after $tries attempts — continuing anyway"
+  return 0
 }
 
 podman_login_ghcr_rootless() {
