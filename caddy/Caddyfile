@@ -40,6 +40,7 @@
     protocols tls1.2 tls1.3
     propagation_timeout 300s
     propagation_delay 10s
+    resolvers 1.1.1.1 8.8.8.8
   }
 }
 
