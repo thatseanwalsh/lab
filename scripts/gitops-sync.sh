@@ -224,21 +224,25 @@ sync_rootless_quadlets() {
 # ── Config sync ────────────────────────────────────────────────────────────
 
 sync_configs() {
-  # Syncs configs/$app/* → /etc/$app/ for all apps
-  # Then configs/$HOSTNAME/$app/* → /etc/$app/ for host-specific overrides
   shopt -s nullglob
 
+  _deploy_config() {
+    local src="$1" dst="$2"
+    if [ "$(install_if_changed "$src" "$dst" 644)" = "changed" ]; then
+      log "Updated config: $dst"
+      # Set SELinux label so podman can bind-mount it
+      chcon -t container_file_t "$dst" 2>/dev/null || true
+    fi
+  }
+
+  # All-host configs
   for app_dir in "$REPO_DIR"/configs/*/; do
     local app
     app=$(basename "$app_dir")
-    # Skip hostname dirs in this pass
     [ "$app" = "$HOSTNAME" ] && continue
     for src in "$app_dir"*; do
       [ -f "$src" ] || continue
-      local dst="/etc/$app/$(basename "$src")"
-      if [ "$(install_if_changed "$src" "$dst" 644)" = "changed" ]; then
-        log "Updated config: $dst"
-      fi
+      _deploy_config "$src" "/etc/$app/$(basename "$src")"
     done
   done
 
@@ -249,10 +253,7 @@ sync_configs() {
       app=$(basename "$app_dir")
       for src in "$app_dir"*; do
         [ -f "$src" ] || continue
-        local dst="/etc/$app/$(basename "$src")"
-        if [ "$(install_if_changed "$src" "$dst" 644)" = "changed" ]; then
-          log "Updated host config: $dst"
-        fi
+        _deploy_config "$src" "/etc/$app/$(basename "$src")"
       done
     done
   fi
