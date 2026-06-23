@@ -47,7 +47,7 @@
 # ── Zitadel Identity Provider ──────────────────────────────────────────
 id.zehru.com {
   import common_headers
-  reverse_proxy localhost:8082 {
+  reverse_proxy systemd-zitadel:8082 {
     header_up Host {host}
     header_up X-Real-IP {remote_host}
     header_up X-Forwarded-For {remote_host}
@@ -59,7 +59,7 @@ id.zehru.com {
 # ── Dashboard (WebUI) ──────────────────────────────────────────────────
 netbird.zehru.com {
   import common_headers
-  reverse_proxy localhost:3000 {
+  reverse_proxy systemd-netbird-dashboard:3000 {
     header_up Host {host}
     header_up X-Real-IP {remote_host}
     header_up X-Forwarded-For {remote_host}
@@ -72,14 +72,14 @@ netbird.zehru.com {
 # ── Management API (REST + gRPC) ───────────────────────────────────────
 api.zehru.com {
   import common_headers
-  reverse_proxy localhost:8080 {
+  reverse_proxy systemd-netbird-management:8080 {
     health_uri /api/v1/groups
     health_interval 30s
   }
   @grpc {
     protocol grpc
   }
-  reverse_proxy @grpc localhost:10000 {
+  reverse_proxy @grpc systemd-netbird-signal:10000 {
     transport http {
       versions h2c
     }
@@ -89,7 +89,7 @@ api.zehru.com {
 # ── Signal server ──────────────────────────────────────────────────────
 signal.zehru.com {
   import common_headers
-  reverse_proxy localhost:10000 {
+  reverse_proxy systemd-netbird-signal:10000 {
     transport http {
       versions h2c
     }
