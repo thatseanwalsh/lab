@@ -8,16 +8,6 @@
 #   - network-online.target is reached
 #   - sops is installed at /usr/local/bin/sops
 #   - enable-linger.service has run (core's user session may still be starting)
-#
-# This script:
-#   1. clones or updates the repo
-#   2. decrypts secrets/*.enc → /run/secrets/
-#   3. syncs root quadlets → /etc/containers/systemd/
-#   4. syncs rootless quadlets → /home/core/.config/containers/systemd/
-#   5. syncs .sops.yaml → /etc/sops/.sops.yaml
-#   6. syncs Caddyfile → /etc/caddy/Caddyfile
-#   7. syncs itself → /opt/gitops/sync.sh
-#   8. reloads changed units and secret-dependent containers (root + rootless)
 
 set -euo pipefail
 
@@ -25,30 +15,32 @@ REPO_DIR="/opt/gitops/repo"
 REPO_URL="${GITOPS_REPO_URL:-https://github.com/thatseanwalsh/lab.git}"
 BRANCH="${GITOPS_BRANCH:-main}"
 QUADLET_DST="/etc/containers/systemd"
-CADDY_DST="/etc/caddy"
 SECRETS_DST="/run/secrets"
 AGE_KEY="/run/age.key"
 LOG_TAG="gitops-sync"
 HOSTNAME=""
-HOST_QUADLET_DIR=""
-HOST_QUADLET_DIR_ROOTLESS=""
 CORE_SESSION_READY=false
 
 log() { logger -t "$LOG_TAG" "$*"; echo "$(date -Iseconds) [sync] $*"; }
 warn() { logger -p user.warning -t "$LOG_TAG" "WARN: $*"; echo "$(date -Iseconds) [sync] WARN: $*"; }
-
 git_exec() { git -C "$REPO_DIR" "$@"; }
+
+install_if_changed() {
+  local src="$1" dst="$2" mode="${3:-644}"
+  mkdir -p "$(dirname "$dst")"
+  if ! cmp -s "$src" "$dst" 2>/dev/null; then
+    install -m "$mode" "$src" "$dst"
+    echo "changed"
+  fi
+  return 0
+}
 
 load_host_settings() {
   if [ -f /etc/gitops.env ]; then
-    # shellcheck source=/dev/null
     source /etc/gitops.env
   fi
   HOSTNAME="${GITOPS_HOSTNAME:-$(hostname -s)}"
-  HOST_QUADLET_DIR="$REPO_DIR/quadlets/$HOSTNAME"
-  HOST_QUADLET_DIR_ROOTLESS="$REPO_DIR/quadlets-rootless/$HOSTNAME"
-  log "Host-specific quadlets directory: $HOST_QUADLET_DIR"
-  log "Host-specific rootless quadlets directory: $HOST_QUADLET_DIR_ROOTLESS"
+  log "Hostname: $HOSTNAME"
 }
 
 ensure_age_key() {
@@ -64,20 +56,17 @@ ensure_age_key() {
   fi
 }
 
-# Waits (once per sync cycle) for core's user session / runtime dir to be up.
-# Rootless functions check $CORE_SESSION_READY instead of waiting individually.
 wait_for_core_session() {
   local tries=0
   while [ ! -d "/run/user/1000" ] && [ "$tries" -lt 10 ]; do
     sleep 1
     tries=$((tries + 1))
   done
-
   if [ -d "/run/user/1000" ]; then
     CORE_SESSION_READY=true
   else
     CORE_SESSION_READY=false
-    warn "/run/user/1000 still not present after waiting — is lingering enabled for core?"
+    warn "/run/user/1000 not present — is lingering enabled for core?"
   fi
 }
 
@@ -90,22 +79,10 @@ ensure_repo() {
     git_exec fetch --depth=1 origin "$BRANCH" 2>&1 | logger -t "$LOG_TAG"
     git_exec reset --hard "origin/$BRANCH"
     AFTER=$(git_exec rev-parse HEAD)
-    if [ "$BEFORE" = "$AFTER" ]; then
-      log "Repo unchanged at $BEFORE — re-checking secrets freshness"
-    else
-      log "Repo updated: $BEFORE → $AFTER"
-    fi
+    [ "$BEFORE" = "$AFTER" ] \
+      && log "Repo unchanged at $BEFORE" \
+      || log "Repo updated: $BEFORE → $AFTER"
   fi
-}
-
-install_if_changed() {
-  local src="$1" dst="$2" mode="${3:-644}"
-  mkdir -p "$(dirname "$dst")"
-  if ! cmp -s "$src" "$dst" 2>/dev/null; then
-    install -m "$mode" "$src" "$dst"
-    echo "changed"  # signal change via stdout instead of return code
-  fi
-  return 0  # always succeed
 }
 
 decrypt_secrets() {
@@ -116,7 +93,6 @@ decrypt_secrets() {
   shopt -s nullglob
   for enc_file in "$REPO_DIR"/secrets/*.enc; do
     [ -f "$enc_file" ] || continue
-
     base=$(basename "$enc_file" .enc)
     dest="$SECRETS_DST/$base"
     tmp=$(mktemp "$SECRETS_DST/.tmp.XXXXXX")
@@ -145,7 +121,6 @@ decrypt_secrets() {
     else
       rm -f "$tmp"
       warn "Decryption failed: $enc_file"
-      warn "Ensure the host age public key is present in .sops.yaml and the file is valid."
     fi
   done
   shopt -u nullglob
@@ -154,23 +129,52 @@ decrypt_secrets() {
 sync_rootless_secrets() {
   [ "$CORE_SESSION_READY" = true ] || { warn "Skipping rootless secrets sync — core session not ready"; return 0; }
 
-  local rootless_secrets_dst="/run/user/1000/secrets"
-  mkdir -p "$rootless_secrets_dst"
-  chown core:core "$rootless_secrets_dst"
-  chmod 700 "$rootless_secrets_dst"
+  local dst="/run/user/1000/secrets"
+  mkdir -p "$dst"
+  chown core:core "$dst"
+  chmod 700 "$dst"
 
   shopt -s nullglob
   for src in "$SECRETS_DST"/*; do
     [ -f "$src" ] || continue
+    local base dst_file
     base=$(basename "$src")
-    dst="$rootless_secrets_dst/$base"
-
-    if ! cmp -s "$src" "$dst" 2>/dev/null; then
-      cp "$src" "$dst"
-      chown core:core "$dst"
-      chmod 600 "$dst"
+    dst_file="$dst/$base"
+    if ! cmp -s "$src" "$dst_file" 2>/dev/null; then
+      cp "$src" "$dst_file"
+      chown core:core "$dst_file"
+      chmod 600 "$dst_file"
       log "Copied secret for rootless use: $base"
     fi
+  done
+  shopt -u nullglob
+}
+
+# ── Quadlet sync helpers ───────────────────────────────────────────────────
+
+sync_quadlet_dir() {
+  # Syncs all quadlet files from a source dir to a destination dir
+  local src_dir="$1" dst_dir="$2" changed_array="$3" owner="${4:-root}"
+  [ -d "$src_dir" ] || return 0
+
+  shopt -s nullglob
+  for ext in container network volume pod kube image; do
+    for src in "$src_dir"/*."$ext"; do
+      [ -f "$src" ] || continue
+      local dst="$dst_dir/$(basename "$src")"
+      if [ "$owner" = "core" ]; then
+        if ! cmp -s "$src" "$dst" 2>/dev/null; then
+          install -o core -g core -m 644 "$src" "$dst"
+          eval "${changed_array}+=(\"$(basename "$src")\")"
+          log "Updated quadlet (rootless): $(basename "$src")"
+        fi
+      else
+        if [ "$(install_if_changed "$src" "$dst" 644)" = "changed" ]; then
+          eval "${changed_array}+=(\"$(basename "$src")\")"
+          log "Updated quadlet: $(basename "$src")"
+        fi
+      fi
+    done
   done
   shopt -u nullglob
 }
@@ -179,27 +183,24 @@ sync_quadlets() {
   CHANGED_UNITS=()
   mkdir -p "$QUADLET_DST"
 
-  shopt -s nullglob
-  for ext in container network volume pod kube image; do
-    for src in "$REPO_DIR"/quadlets/*."$ext"; do
-      [ -f "$src" ] || continue
-      dst="$QUADLET_DST/$(basename "$src")"
-      if [ "$(install_if_changed "$src" "$dst" 644)" = "changed" ]; then
-        CHANGED_UNITS+=("$(basename "$src")")
-        log "Updated quadlet: $(basename "$src")"
-      fi
-    done
-  done
+  # All-host root quadlets
+  sync_quadlet_dir "$REPO_DIR/quadlets" "$QUADLET_DST" "CHANGED_UNITS" "root"
 
+  # Host-specific root quadlets
+  sync_quadlet_dir "$REPO_DIR/quadlets/$HOSTNAME" "$QUADLET_DST" "CHANGED_UNITS" "root"
+
+  # Remove stale quadlets
+  shopt -s nullglob
   for dst in "$QUADLET_DST"/*.{container,network,volume,pod,kube,image}; do
     [ -f "$dst" ] || continue
-    if [ ! -f "$REPO_DIR/quadlets/$(basename "$dst")" ] && [ ! -f "$HOST_QUADLET_DIR/$(basename "$dst")" ]; then
-      svc="${dst##*/}"
-      svc="${svc%.*}"
-      log "Removing stale quadlet: $(basename "$dst")"
+    local base
+    base=$(basename "$dst")
+    if [ ! -f "$REPO_DIR/quadlets/$base" ] && [ ! -f "$REPO_DIR/quadlets/$HOSTNAME/$base" ]; then
+      local svc="${base%.*}"
+      log "Removing stale quadlet: $base"
       systemctl stop "$svc" 2>/dev/null || true
       rm -f "$dst"
-      CHANGED_UNITS+=("$(basename "$dst")")
+      CHANGED_UNITS+=("$base")
     fi
   done
   shopt -u nullglob
@@ -213,141 +214,129 @@ sync_rootless_quadlets() {
   mkdir -p "$dst"
   chown core:core "$dst" -R || true
 
+  # All-host rootless quadlets
+  sync_quadlet_dir "$REPO_DIR/quadlets-rootless" "$dst" "ROOTLESS_CHANGED" "core"
+
+  # Host-specific rootless quadlets
+  sync_quadlet_dir "$REPO_DIR/quadlets-rootless/$HOSTNAME" "$dst" "ROOTLESS_CHANGED" "core"
+}
+
+# ── Config sync ────────────────────────────────────────────────────────────
+
+sync_configs() {
+  # Syncs configs/$app/* → /etc/$app/ for all apps
+  # Then configs/$HOSTNAME/$app/* → /etc/$app/ for host-specific overrides
   shopt -s nullglob
-  for ext in container network volume pod kube image; do
-    for src in "$REPO_DIR"/quadlets-rootless/*."$ext"; do
+
+  for app_dir in "$REPO_DIR"/configs/*/; do
+    local app
+    app=$(basename "$app_dir")
+    # Skip hostname dirs in this pass
+    [ "$app" = "$HOSTNAME" ] && continue
+    for src in "$app_dir"*; do
       [ -f "$src" ] || continue
-      target="$dst/$(basename "$src")"
-      if ! cmp -s "$src" "$target" 2>/dev/null; then
-        install -o core -g core -m 644 "$src" "$target"
-        ROOTLESS_CHANGED+=("$(basename "$src")")
-        log "Updated rootless quadlet: $(basename "$src")"
+      local dst="/etc/$app/$(basename "$src")"
+      if [ "$(install_if_changed "$src" "$dst" 644)" = "changed" ]; then
+        log "Updated config: $dst"
       fi
     done
   done
+
+  # Host-specific config overrides
+  if [ -d "$REPO_DIR/configs/$HOSTNAME" ]; then
+    for app_dir in "$REPO_DIR/configs/$HOSTNAME"/*/; do
+      local app
+      app=$(basename "$app_dir")
+      for src in "$app_dir"*; do
+        [ -f "$src" ] || continue
+        local dst="/etc/$app/$(basename "$src")"
+        if [ "$(install_if_changed "$src" "$dst" 644)" = "changed" ]; then
+          log "Updated host config: $dst"
+        fi
+      done
+    done
+  fi
+
   shopt -u nullglob
 }
 
-sync_rootless_host_quadlets() {
-  [ "$CORE_SESSION_READY" = true ] || { warn "Skipping rootless host quadlet sync — core session not ready"; return 0; }
+sync_rootless_caddy() {
+  [ "$CORE_SESSION_READY" = true ] || { warn "Skipping rootless Caddyfile sync — core session not ready"; return 0; }
 
-  local host_dir="$HOST_QUADLET_DIR_ROOTLESS"
-  local dst="/home/core/.config/containers/systemd"
+  local src="$REPO_DIR/caddy/Caddyfile"
+  [ -f "$src" ] || return 0
 
-  if [ ! -d "$host_dir" ]; then
-    log "No host-specific rootless quadlets for $HOSTNAME"
-    return 0
+  local dst="/home/core/caddy/Caddyfile"
+  mkdir -p "$(dirname "$dst")"
+  chown core:core "$(dirname "$dst")" || true
+
+  if ! cmp -s "$src" "$dst" 2>/dev/null; then
+    install -o core -g core -m 644 "$src" "$dst"
+    log "Updated rootless Caddyfile"
+
+    if sudo -u core XDG_RUNTIME_DIR=/run/user/1000 systemctl --user is-active caddy-proxy.service &>/dev/null \
+       && sudo -u core XDG_RUNTIME_DIR=/run/user/1000 podman exec caddy-proxy caddy validate --config /etc/caddy/Caddyfile &>/dev/null; then
+      sudo -u core XDG_RUNTIME_DIR=/run/user/1000 systemctl --user reload caddy-proxy.service 2>/dev/null \
+        && log "Caddy reloaded gracefully" \
+        || warn "Caddy reload failed"
+    else
+      warn "Caddyfile validation failed or caddy-proxy unavailable — not reloading"
+    fi
   fi
+}
 
-  mkdir -p "$dst"
-  chown core:core "$dst" || true
+sync_sops_config() {
+  [ -f "$REPO_DIR/.sops.yaml" ] || return 0
+  if [ "$(install_if_changed "$REPO_DIR/.sops.yaml" /etc/sops/.sops.yaml 644)" = "changed" ]; then
+    log "Updated /etc/sops/.sops.yaml"
+  fi
+}
 
-  shopt -s nullglob
-  for ext in container network volume pod kube image; do
-    for src in "$host_dir"/*."$ext"; do
-      [ -f "$src" ] || continue
-      target="$dst/$(basename "$src")"
-      if ! cmp -s "$src" "$target" 2>/dev/null; then
-        install -o core -g core -m 644 "$src" "$target"
-        ROOTLESS_CHANGED+=("$(basename "$src")")
-        log "Updated host rootless quadlet: $(basename "$src")"
-      fi
-    done
+# ── Unit reload ────────────────────────────────────────────────────────────
+
+reload_units() {
+  [ ${#CHANGED_UNITS[@]} -gt 0 ] || return 0
+  log "systemctl daemon-reload (${#CHANGED_UNITS[@]} changed)"
+  systemctl daemon-reload
+  for unit in "${CHANGED_UNITS[@]}"; do
+    local svc="${unit%.*}"
+    systemctl restart "$svc" 2>/dev/null \
+      && log "Restarted $svc" \
+      || warn "$svc restart failed — journalctl -u $svc"
   done
-  shopt -u nullglob
 }
 
 reload_rootless_units() {
   [ ${#ROOTLESS_CHANGED[@]} -gt 0 ] || return 0
   [ "$CORE_SESSION_READY" = true ] || { warn "Skipping rootless unit reload — core session not ready"; return 0; }
 
-  log "Reloading rootless units for core (${#ROOTLESS_CHANGED[@]} changed)"
+  log "Reloading rootless units (${#ROOTLESS_CHANGED[@]} changed)"
   sudo -u core XDG_RUNTIME_DIR=/run/user/1000 systemctl --user daemon-reload
   for unit in "${ROOTLESS_CHANGED[@]}"; do
-    svc="${unit%.*}"
+    local svc="${unit%.*}"
     sudo -u core XDG_RUNTIME_DIR=/run/user/1000 systemctl --user restart "$svc" \
       && log "Restarted (rootless) $svc" \
       || warn "(rootless) $svc restart failed"
   done
 }
 
-sync_host_quadlets() {
-  if [ ! -d "$HOST_QUADLET_DIR" ]; then
-    log "No host-specific quadlets for $HOSTNAME"
-    return 0
-  fi
-
-  shopt -s nullglob
-  for ext in container network volume pod kube image; do
-    for src in "$HOST_QUADLET_DIR"/*."$ext"; do
-      [ -f "$src" ] || continue
-      dst="$QUADLET_DST/$(basename "$src")"
-      if [ "$(install_if_changed "$src" "$dst" 644)" = "changed" ]; then
-        CHANGED_UNITS+=("$(basename "$src")")
-        log "Updated host quadlet: $(basename "$src")"
-      fi
-    done
-  done
-  shopt -u nullglob
-}
-
-sync_sops_config() {
-  if [ -f "$REPO_DIR/.sops.yaml" ]; then
-    if [ "$(install_if_changed "$REPO_DIR/.sops.yaml" /etc/sops/.sops.yaml 644)" = "changed" ]; then
-      log "Updated /etc/sops/.sops.yaml"
-    fi
-  fi
-}
-
-sync_rootless_caddy() {
-  [ "$CORE_SESSION_READY" = true ] || { warn "Skipping rootless Caddyfile sync — core session not ready"; return 0; }
-
-  if [ -f "$REPO_DIR/caddy/Caddyfile" ]; then
-    local dst="/home/core/caddy/Caddyfile"
-    mkdir -p "$(dirname "$dst")"
-    chown core:core "$(dirname "$dst")" || true
-
-    if ! cmp -s "$REPO_DIR/caddy/Caddyfile" "$dst" 2>/dev/null; then
-      install -o core -g core -m 644 "$REPO_DIR/caddy/Caddyfile" "$dst"
-      log "Updated rootless Caddyfile"
-
-      if sudo -u core XDG_RUNTIME_DIR=/run/user/1000 systemctl --user is-active caddy-proxy.service &>/dev/null \
-         && sudo -u core XDG_RUNTIME_DIR=/run/user/1000 podman exec caddy-proxy caddy validate --config /etc/caddy/Caddyfile &>/dev/null; then
-        sudo -u core XDG_RUNTIME_DIR=/run/user/1000 systemctl --user reload caddy-proxy.service 2>/dev/null \
-          && log "Caddy (rootless) reloaded gracefully" \
-          || warn "Caddy (rootless) reload failed"
-      else
-        warn "Rootless Caddyfile validation failed or caddy-proxy unavailable — not reloading"
-      fi
-    fi
-  fi
-}
-
-reload_units() {
-  if [ ${#CHANGED_UNITS[@]} -gt 0 ]; then
-    log "systemctl daemon-reload (${#CHANGED_UNITS[@]} changed)"
-    systemctl daemon-reload
-    for unit in "${CHANGED_UNITS[@]}"; do
-      svc="${unit%.*}"
-      systemctl restart "$svc" 2>/dev/null && log "Restarted $svc" || warn "$svc restart failed — journalctl -u $svc"
-    done
-  fi
-}
+# ── Secret-dependent container restarts ────────────────────────────────────
 
 restart_secret_containers() {
-  if [ ${#SECRETS_CHANGED[@]} -eq 0 ]; then
-    return 0
-  fi
+  [ ${#SECRETS_CHANGED[@]} -eq 0 ] && return 0
   log "Changed secrets: ${SECRETS_CHANGED[*]}"
   shopt -s nullglob
   for unit_file in "$QUADLET_DST"/*.container; do
     [ -f "$unit_file" ] || continue
+    local svc label
     svc="$(basename "$unit_file" .container)"
     label=$(grep -i '^Label=secrets=' "$unit_file" | sed 's/^[Ll]abel=secrets=//' | tr ',' '\n') 2>/dev/null || true
     [ -z "$label" ] && continue
     for changed in "${SECRETS_CHANGED[@]}"; do
       if echo "$label" | grep -qxF "$changed"; then
-        systemctl restart "$svc" 2>/dev/null && log "Restarted $svc (secret: $changed changed)" || warn "$svc restart failed"
+        systemctl restart "$svc" 2>/dev/null \
+          && log "Restarted $svc (secret: $changed)" \
+          || warn "$svc restart failed"
         break
       fi
     done
@@ -356,23 +345,22 @@ restart_secret_containers() {
 }
 
 restart_rootless_secret_containers() {
-  if [ ${#SECRETS_CHANGED[@]} -eq 0 ]; then
-    return 0
-  fi
+  [ ${#SECRETS_CHANGED[@]} -eq 0 ] && return 0
   [ "$CORE_SESSION_READY" = true ] || { warn "Skipping rootless secret-container restart — core session not ready"; return 0; }
 
   log "Changed secrets: ${SECRETS_CHANGED[*]}"
-  local dst="/home/core/.config/containers/systemd"
+  local quadlet_dir="/home/core/.config/containers/systemd"
   shopt -s nullglob
-  for unit_file in "$dst"/*.container; do
+  for unit_file in "$quadlet_dir"/*.container; do
     [ -f "$unit_file" ] || continue
+    local svc label
     svc="$(basename "$unit_file" .container)"
     label=$(grep -i '^Label=secrets=' "$unit_file" | sed 's/^[Ll]abel=secrets=//' | tr ',' '\n') 2>/dev/null || true
     [ -z "$label" ] && continue
     for changed in "${SECRETS_CHANGED[@]}"; do
       if echo "$label" | grep -qxF "$changed"; then
         sudo -u core XDG_RUNTIME_DIR=/run/user/1000 systemctl --user restart "$svc" 2>/dev/null \
-          && log "Restarted (rootless) $svc (secret: $changed changed)" \
+          && log "Restarted (rootless) $svc (secret: $changed)" \
           || warn "(rootless) $svc restart failed"
         break
       fi
@@ -381,13 +369,12 @@ restart_rootless_secret_containers() {
   shopt -u nullglob
 }
 
+# ── GHCR login ─────────────────────────────────────────────────────────────
+
 podman_login_ghcr() {
   local ghcr_env="$SECRETS_DST/ghcr.env"
   [ -f "$ghcr_env" ] || { warn "GHCR credentials not found, skipping podman login"; return 0; }
-
-  # shellcheck disable=SC1090
   source "$ghcr_env"
-
   [ -n "${GHCR_USERNAME:-}" ] && [ -n "${GHCR_TOKEN:-}" ] || return 0
 
   local tries=0
@@ -409,7 +396,6 @@ podman_login_ghcr_rootless() {
   [ -f "$ghcr_env" ] || return 0
   source "$ghcr_env"
   [ -n "${GHCR_USERNAME:-}" ] && [ -n "${GHCR_TOKEN:-}" ] || return 0
-
   [ "$CORE_SESSION_READY" = true ] || { warn "Skipping rootless GHCR login — core session not ready"; return 0; }
 
   local tries=0
@@ -426,14 +412,15 @@ podman_login_ghcr_rootless() {
     sleep 5
   done
   warn "podman login to ghcr.io (rootless) failed after $tries attempts — continuing anyway"
-  return 0  # never let this kill the script
+  return 0
 }
+
+# ── Main ───────────────────────────────────────────────────────────────────
 
 main() {
   ensure_age_key
   ensure_repo
 
-  # Sync the sync script
   if ! cmp -s "$REPO_DIR/scripts/gitops-sync.sh" "$0"; then
     log "sync.sh changed in repo, updating and re-executing..."
     cp "$REPO_DIR/scripts/gitops-sync.sh" "$0"
@@ -450,14 +437,13 @@ main() {
     podman_login_ghcr
     podman_login_ghcr_rootless
   else
-    log "Skipping secret decryption because age key is unavailable"
+    log "Skipping secret decryption — age key unavailable"
     SECRETS_CHANGED=()
   fi
 
   sync_quadlets
   sync_rootless_quadlets
-  sync_host_quadlets
-  sync_rootless_host_quadlets
+  sync_configs
   sync_sops_config
   sync_rootless_caddy
   reload_units

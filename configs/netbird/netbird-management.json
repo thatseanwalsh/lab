@@ -1,0 +1,79 @@
+{
+  "Stuns": [
+    {
+      "Proto": "udp",
+      "URI": "stun:stun.zehru.com:3478",
+      "Username": "",
+      "Password": null
+    }
+  ],
+  "TURNConfig": {
+    "Timeouts": {
+      "IdpUserDeleteCheckPeriod": "24h",
+      "IdpUserDeleteTimeout": "72h"
+    },
+    "Turns": [
+      {
+        "Proto": "udp",
+        "URI": "turn:stun.zehru.com:3478",
+        "Username": "netbird",
+        "Password": "netbird"
+      }
+    ],
+    "CredentialsTTL": "12h",
+    "Secret": "secret",
+    "TimeBasedCredentials": false
+  },
+  "Signal": {
+    "Proto": "https",
+    "URI": "signal.zehru.com:443",
+    "Username": "",
+    "Password": null
+  },
+  "Datadir": "/var/lib/netbird",
+  "DataStoreEncryptionKey": "",
+  "HttpConfig": {
+    "LetsEncryptDomain": "",
+    "CertFile": "",
+    "CertKey": "",
+    "AuthAudience": "netbird-client",
+    "AuthIssuer": "https://id.zehru.com",
+    "AuthKeysLocation": "https://id.zehru.com/oauth/v2/keys",
+    "OIDCConfigEndpoint": "https://id.zehru.com/.well-known/openid-configuration",
+    "IdpSignKeyRefreshEnabled": true
+  },
+  "IdpManagerConfig": {
+    "ManagerType": "zitadel",
+    "ClientConfig": {
+      "Issuer": "https://id.zehru.com",
+      "TokenEndpoint": "https://id.zehru.com/oauth/v2/token",
+      "ClientID": "",
+      "ClientSecret": "",
+      "GrantType": "client_credentials"
+    },
+    "ExtraConfig": {
+      "ManagementEndpoint": "https://id.zehru.com/management/v1"
+    },
+    "Auth0ClientCredentials": null,
+    "AzureClientCredentials": null,
+    "KeycloakClientCredentials": null,
+    "ZitadelClientCredentials": {
+      "ClientID": "",
+      "ClientSecret": "",
+      "GrantType": "client_credentials",
+      "TokenEndpoint": "https://id.zehru.com/oauth/v2/token"
+    }
+  },
+  "PKCEAuthorizationFlow": {
+    "ProviderConfig": {
+      "Audience": "netbird-client",
+      "ClientID": "",
+      "ClientSecret": "",
+      "Domain": "id.zehru.com",
+      "AuthorizationEndpoint": "https://id.zehru.com/oauth/v2/authorize",
+      "TokenEndpoint": "https://id.zehru.com/oauth/v2/token",
+      "Scope": "openid profile email offline_access",
+      "RedirectURLs": ["http://localhost:53000"]
+    }
+  }
+}

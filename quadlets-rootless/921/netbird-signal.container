@@ -14,6 +14,7 @@ NoNewPrivileges=true
 DropCapability=ALL
 
 [Service]
+Exec=--port 10000 --log-level info --disable-anonymous-metric
 Restart=always
 RestartSec=10s
 
