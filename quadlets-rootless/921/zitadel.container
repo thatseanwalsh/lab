@@ -22,7 +22,7 @@ Environment=ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD_CHANGEDREQUIRED=false
 
 PublishPort=127.0.0.1:8082:8080
 
-Exec=start--tlsMode external
+Exec=start --tlsMode external
 
 NoNewPrivileges=true
 DropCapability=ALL
