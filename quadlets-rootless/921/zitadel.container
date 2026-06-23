@@ -24,7 +24,7 @@ Volume=zitadel-certs.volume:/crdb-certs:Z
 
 PublishPort=127.0.0.1:8082:8080
 
-Exec=start --masterkey ${ZITADEL_MASTERKEY} --tlsMode disabled
+Exec=start --tlsMode disabled
 
 NoNewPrivileges=true
 DropCapability=ALL
