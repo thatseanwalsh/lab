@@ -7,7 +7,7 @@ Wants=network-online.target
 Image=docker.io/cockroachdb/cockroach:latest
 Network=caddy-net.network
 Volume=zitadel-db.volume:/cockroach/cockroach-data:Z
-Exec=start-single-node --insecure --listen-addr=0.0.0.0:26257 --http-addr=0.0.0.0:8081
+Exec=start-single-node --insecure --listen-addr=127.0.0.1:26257 --http-addr=127.0.0.1:8081
 NoNewPrivileges=true
 DropCapability=ALL
 
