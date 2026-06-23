@@ -8,13 +8,13 @@ Wants=network-online.target
 
 [Container]
 Image=docker.io/netbirdio/signal:latest
-PublishPort=127.0.0.1:10000:10000
 Network=caddy-net.network
 NoNewPrivileges=true
 DropCapability=ALL
+Exec=run --port 10000 --log-level info --disable-anonymous-metric
 
 [Service]
-Exec=--port 10000 --log-level info --disable-anonymous-metric
+
 Restart=always
 RestartSec=10s
 
