@@ -11,7 +11,7 @@ Image=docker.io/netbirdio/signal:latest
 Network=caddy-net.network
 NoNewPrivileges=true
 DropCapability=ALL
-Exec=run --port 10000 --log-level info --disable-anonymous-metric
+Exec=run --port 10000 --log-level info
 
 [Service]
 
