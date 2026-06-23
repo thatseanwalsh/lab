@@ -20,11 +20,9 @@ Environment=ZITADEL_TLS_ENABLED=false
 Environment=ZITADEL_FIRSTINSTANCE_ORG_HUMAN_USERNAME=admin
 Environment=ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD_CHANGEDREQUIRED=false
 
-Volume=zitadel-certs.volume:/crdb-certs:Z
-
 PublishPort=127.0.0.1:8082:8080
 
-Exec=start --tlsMode disabled
+Exec=start --masterkey-file /run/secrets/zitadel-masterkey --tlsMode disabled
 
 NoNewPrivileges=true
 DropCapability=ALL
