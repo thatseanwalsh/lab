@@ -1,0 +1,39 @@
+[Unit]
+Description=OAuth2 Proxy for Netbird Dashboard
+After=network-online.target zitadel.service
+Wants=network-online.target
+Requires=zitadel.service caddy-net.network
+
+[Container]
+Image=quay.io/oauth2-proxy/oauth2-proxy:latest
+Network=caddy-net.network
+
+EnvironmentFile=/run/secrets/oauth2-proxy.env
+
+Environment=OAUTH2_PROXY_PROVIDER=oidc
+Environment=OAUTH2_PROXY_OIDC_ISSUER_URL=https://id.zehru.com
+Environment=OAUTH2_PROXY_UPSTREAMS=http://systemd-netbird-dashboard:3000
+Environment=OAUTH2_PROXY_HTTP_ADDRESS=0.0.0.0:4180
+Environment=OAUTH2_PROXY_CALLBACK_URL=https://netbird.zehru.com/oauth2/callback
+Environment=OAUTH2_PROXY_EMAIL_DOMAINS=*
+Environment=OAUTH2_PROXY_SCOPE=openid email profile
+Environment=OAUTH2_PROXY_SKIP_PROVIDER_BUTTON=true
+Environment=OAUTH2_PROXY_REVERSE_PROXY=true
+Environment=OAUTH2_PROXY_PASS_ACCESS_TOKEN=true
+Environment=OAUTH2_PROXY_PASS_AUTHORIZATION_HEADER=true
+Environment=OAUTH2_PROXY_SET_XAUTHREQUEST=true
+Environment=OAUTH2_PROXY_COOKIE_SECURE=true
+Environment=OAUTH2_PROXY_COOKIE_SAMESITE=lax
+Environment=OAUTH2_PROXY_SESSION_STORE_TYPE=cookie
+
+PublishPort=127.0.0.1:4180:4180
+
+NoNewPrivileges=true
+DropCapability=ALL
+
+[Service]
+Restart=always
+RestartSec=10s
+
+[Install]
+WantedBy=default.target

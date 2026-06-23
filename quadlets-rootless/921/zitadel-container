@@ -1,0 +1,43 @@
+[Unit]
+Description=Zitadel Identity Provider
+After=network-online.target zitadel-db.service
+Wants=network-online.target
+Requires=zitadel-db.service caddy-net.network zitadel-db.volume zitadel-certs.volume
+
+[Container]
+Image=ghcr.io/zitadel/zitadel:latest
+Network=caddy-net.network
+
+EnvironmentFile=/run/secrets/zitadel.env
+
+Environment=ZITADEL_DATABASE_COCKROACH_HOST=systemd-zitadel-db
+Environment=ZITADEL_DATABASE_COCKROACH_PORT=26257
+Environment=ZITADEL_DATABASE_COCKROACH_INSECURE=true
+Environment=ZITADEL_EXTERNALDOMAIN=id.zehru.com
+Environment=ZITADEL_EXTERNALPORT=443
+Environment=ZITADEL_EXTERNALSECURE=true
+Environment=ZITADEL_TLS_ENABLED=false
+Environment=ZITADEL_FIRSTINSTANCE_ORG_HUMAN_USERNAME=admin
+Environment=ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD_CHANGEDREQUIRED=false
+
+Volume=zitadel-certs.volume:/crdb-certs:Z
+
+PublishPort=127.0.0.1:8082:8080
+
+Exec=start --masterkey ${ZITADEL_MASTERKEY} --tlsMode disabled
+
+NoNewPrivileges=true
+DropCapability=ALL
+
+HealthCmd=wget -qO- http://localhost:8080/debug/ready || exit 1
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=5
+
+[Service]
+Restart=always
+RestartSec=10s
+TimeoutStartSec=180
+
+[Install]
+WantedBy=default.target

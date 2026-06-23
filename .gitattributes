@@ -1,2 +1,3 @@
 *.yaml eol=lf
 *.enc eol=lf
+Caddyfile eol=lf
