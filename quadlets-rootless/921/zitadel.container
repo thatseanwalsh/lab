@@ -8,6 +8,8 @@ Requires=zitadel-db.service caddy-net.network zitadel-db.volume zitadel-certs.vo
 Image=ghcr.io/zitadel/zitadel:latest
 Network=caddy-net.network
 
+Volume=/run/user/1000/secrets/zitadel-masterkey.bin:/run/secrets/zitadel-masterkey.bin:ro
+
 EnvironmentFile=/run/user/1000/secrets/zitadel.env
 
 Environment=ZITADEL_DATABASE_COCKROACH_HOST=systemd-zitadel-db
