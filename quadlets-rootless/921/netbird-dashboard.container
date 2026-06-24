@@ -8,7 +8,6 @@ Wants=network-online.target
 
 [Container]
 Image=docker.io/netbirdio/dashboard:latest
-PublishPort=127.0.0.1:3000:3000
 Network=caddy-net.network
 NoNewPrivileges=true
 DropCapability=ALL

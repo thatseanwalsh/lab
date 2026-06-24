@@ -26,8 +26,6 @@ Environment=OAUTH2_PROXY_COOKIE_SECURE=true
 Environment=OAUTH2_PROXY_COOKIE_SAMESITE=lax
 Environment=OAUTH2_PROXY_SESSION_STORE_TYPE=cookie
 
-PublishPort=127.0.0.1:4180:4180
-
 NoNewPrivileges=true
 DropCapability=ALL
 

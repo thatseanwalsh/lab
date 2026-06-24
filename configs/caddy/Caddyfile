@@ -47,7 +47,7 @@
 # ── Zitadel Identity Provider ──────────────────────────────────────────
 id.zehru.com {
   import common_headers
-  reverse_proxy systemd-zitadel:8082 {
+  reverse_proxy systemd-zitadel:8080 {
     header_up Host {host}
     header_up X-Real-IP {remote_host}
     header_up X-Forwarded-For {remote_host}
