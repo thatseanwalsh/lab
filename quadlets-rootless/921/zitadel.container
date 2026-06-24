@@ -8,8 +8,6 @@ Requires=zitadel-db.service caddy-net.network zitadel-db.volume zitadel-certs.vo
 Image=ghcr.io/zitadel/zitadel:latest
 Network=caddy-net.network
 
-Volume=/run/user/1000/secrets/zitadel-masterkey.bin:/run/secrets/zitadel-masterkey.bin:ro
-
 EnvironmentFile=/run/user/1000/secrets/zitadel.env
 
 Environment=ZITADEL_DATABASE_COCKROACH_HOST=systemd-zitadel-db
@@ -24,7 +22,7 @@ Environment=ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD_CHANGEDREQUIRED=false
 
 PublishPort=127.0.0.1:8082:8080
 
-Exec=start --tlsMode external --masterkeyFile /run/secrets/zitadel-masterkey.bin
+Exec=start --tlsMode external --masterkeyFromEnv
 
 NoNewPrivileges=true
 DropCapability=ALL
