@@ -1,0 +1,15 @@
+[Unit]
+Description=ZITADEL Login UI
+
+[Container]
+Image=ghcr.io/zitadel/zitadel-login:latest
+Network=systemd-caddy-net
+
+Environment=ZITADEL_API_URL=https://id.zehru.com
+Environment=ZITADEL_SERVICE_USER_TOKEN_FILE=/run/user/1000/secrets/zitadel-login.key
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target

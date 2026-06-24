@@ -22,7 +22,7 @@
 #     age1HOST2_PUBLIC_KEY
 
 creation_rules:
-  - path_regex: secrets/.*\.env$
+  - path_regex: secrets/.*\.(env|key)$
     age: >-
       age1y3vfvwayxc466ud0gsrx9v7j80zpyshmvz4slynctydm63kekf4qluprg3,
       age157q8tcr0p8e0f97qp33ptsenaph77pna480jturelaqvd3x8scxsmstl9f
