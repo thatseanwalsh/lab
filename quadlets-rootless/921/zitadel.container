@@ -10,9 +10,6 @@ Network=caddy-net.network
 
 EnvironmentFile=/run/user/1000/secrets/zitadel.env
 
-Environment=ZITADEL_DATABASE_COCKROACH_HOST=systemd-zitadel-db
-Environment=ZITADEL_DATABASE_COCKROACH_PORT=26257
-Environment=ZITADEL_DATABASE_COCKROACH_INSECURE=true
 Environment=ZITADEL_EXTERNALDOMAIN=id.zehru.com
 Environment=ZITADEL_EXTERNALPORT=443
 Environment=ZITADEL_EXTERNALSECURE=true
@@ -22,7 +19,8 @@ Environment=ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD_CHANGEDREQUIRED=false
 
 PublishPort=127.0.0.1:8082:8080
 
-Exec=start --tlsMode external --masterkeyFromEnv
+Volume=/etc/zitadel/config.yaml:/etc/zitadel/config.yaml:ro
+Exec=start --tlsMode external --masterkeyFromEnv --config /etc/zitadel/config.yaml
 
 NoNewPrivileges=true
 DropCapability=ALL
