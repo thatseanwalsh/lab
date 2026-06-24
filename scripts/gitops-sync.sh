@@ -103,6 +103,10 @@ decrypt_secrets() {
         SOPS_AGE_KEY_FILE="$AGE_KEY" sops --decrypt --input-type dotenv --output-type dotenv "$enc_file" > "$tmp" 2>/dev/null
         decrypt_status=$?
         ;;
+      *.bin.enc)
+        SOPS_AGE_KEY_FILE="$AGE_KEY" sops --decrypt --input-type binary --output-type binary "$enc_file" > "$tmp" 2>/dev/null
+        decrypt_status=$?
+        ;;
       *)
         SOPS_AGE_KEY_FILE="$AGE_KEY" sops --decrypt "$enc_file" > "$tmp" 2>/dev/null
         decrypt_status=$?
