@@ -64,8 +64,6 @@ netbird.zehru.com {
     header_up X-Real-IP {remote_host}
     header_up X-Forwarded-For {remote_host}
     header_up X-Forwarded-Proto {scheme}
-    health_uri /
-    health_interval 30s
   }
 }
 
@@ -73,8 +71,6 @@ netbird.zehru.com {
 api.zehru.com {
   import common_headers
   reverse_proxy systemd-netbird-management:8080 {
-    health_uri /api/v1/groups
-    health_interval 30s
   }
   @grpc {
     protocol grpc
