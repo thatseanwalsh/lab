@@ -1,15 +1,23 @@
 [Unit]
-Description=CockroachDB for Zitadel
+Description=PostgreSQL for Zitadel
 After=network-online.target
 Wants=network-online.target
 
 [Container]
-Image=docker.io/cockroachdb/cockroach:latest
+Image=docker.io/postgres:16-alpine
 Network=caddy-net.network
-Volume=zitadel-db.volume:/cockroach/cockroach-data:Z
-Exec=start-single-node --insecure --listen-addr=127.0.0.1:26257 --http-addr=127.0.0.1:8081
+Volume=zitadel-db.volume:/var/lib/postgresql/data:Z
+
+Environment=POSTGRES_USER=zitadel
+Environment=POSTGRES_DB=zitadel
+EnvironmentFile=/run/user/1000/secrets/zitadel-db.env
+
 NoNewPrivileges=true
-DropCapability=ALL
+
+HealthCmd=pg_isready -U zitadel
+HealthInterval=10s
+HealthTimeout=5s
+HealthRetries=5
 
 [Service]
 Restart=always

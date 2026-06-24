@@ -17,8 +17,7 @@ Environment=ZITADEL_TLS_ENABLED=false
 Environment=ZITADEL_FIRSTINSTANCE_ORG_HUMAN_USERNAME=admin
 Environment=ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD_CHANGEDREQUIRED=false
 
-Volume=/etc/zitadel/config.yaml:/etc/zitadel/config.yaml:ro
-Exec=start --tlsMode external --masterkeyFromEnv --config /etc/zitadel/config.yaml
+Exec=start --tlsMode external --masterkeyFromEnv
 
 NoNewPrivileges=true
 DropCapability=ALL
