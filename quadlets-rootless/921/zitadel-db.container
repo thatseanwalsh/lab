@@ -8,8 +8,6 @@ Image=docker.io/postgres:16-alpine
 Network=caddy-net.network
 Volume=zitadel-db.volume:/var/lib/postgresql/data:Z
 
-Environment=POSTGRES_USER=zitadel
-Environment=POSTGRES_DB=zitadel
 EnvironmentFile=/run/user/1000/secrets/zitadel-db.env
 
 NoNewPrivileges=true
