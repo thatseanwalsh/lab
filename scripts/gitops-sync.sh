@@ -268,7 +268,7 @@ sync_configs() {
 sync_rootless_caddy() {
   [ "$CORE_SESSION_READY" = true ] || { warn "Skipping rootless Caddyfile sync — core session not ready"; return 0; }
 
-  local src="$REPO_DIR/caddy/Caddyfile"
+  local src="$REPO_DIR/configs/caddy/Caddyfile"
   [ -f "$src" ] || return 0
 
   local dst="/home/core/caddy/Caddyfile"
