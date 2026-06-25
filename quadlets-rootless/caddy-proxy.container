@@ -10,7 +10,7 @@ Wants=network-online.target
 [Container]
 Image=ghcr.io/thatseanwalsh/caddy-custom:latest
 
-Volume=/home/core/caddy/Caddyfile:/etc/caddy/Caddyfile:ro:Z
+Volume=/home/core/caddy/Caddyfile:/etc/caddy/Caddyfile:ro,Z
 Volume=caddy-data.volume:/data:Z
 Volume=caddy-config.volume:/config:Z
 EnvironmentFile=/run/user/1000/secrets/cloudflare.env
