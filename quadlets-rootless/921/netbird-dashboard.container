@@ -9,8 +9,6 @@ Wants=network-online.target
 [Container]
 Image=docker.io/netbirdio/dashboard:latest
 Network=caddy-net.network
-NoNewPrivileges=true
-DropCapability=ALL
 
 [Service]
 Restart=always
