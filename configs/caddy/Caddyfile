@@ -52,16 +52,9 @@ id.zehru.com {
     Referrer-Policy "strict-origin-when-cross-origin"
     -Server
   }
-
-  handle /ui/v2/login/* {
-    reverse_proxy systemd-zitadel-login:3000
-  }
-  handle {
-    reverse_proxy systemd-zitadel:8080 {
-      header_up Host {host}
-      header_up X-Real-IP {remote_host}
-      flush_interval -1
-    }
+  reverse_proxy systemd-zitadel:8080 {
+    header_up Host {host}
+    flush_interval -1
   }
 }
 
@@ -71,8 +64,6 @@ netbird.zehru.com {
   reverse_proxy systemd-netbird-dashboard:3000 {
     header_up Host {host}
     header_up X-Real-IP {remote_host}
-    header_up X-Forwarded-For {remote_host}
-    header_up X-Forwarded-Proto {scheme}
   }
 }
 
