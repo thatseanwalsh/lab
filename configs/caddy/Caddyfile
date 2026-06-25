@@ -55,9 +55,12 @@ id.zehru.com {
   }
 
   handle {
-    reverse_proxy systemd-zitadel:8080 {
+    reverse_proxy https://systemd-zitadel:8080 {
       header_up Host {host}
+      header_up -TE
       flush_interval -1
+      transport http {
+            tls_insecure_skip_verify
     }
   }
 }
