@@ -54,14 +54,7 @@ id.zehru.com {
     -X-Frame-Options
   }
 
-  reverse_proxy systemd-zitadel:8080 {
-    header_up Host {host}
-    header_up X-Forwarded-Proto https
-    header_up X-Forwarded-Host {host}
-    header_up X-Real-IP {remote}
-    header_up -TE
-    flush_interval -1
-  }
+  reverse_proxy systemd-zitadel:8080
 }
 
 # ── Dashboard (WebUI) ──────────────────────────────────────────────────
