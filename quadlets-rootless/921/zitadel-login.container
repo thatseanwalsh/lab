@@ -6,8 +6,6 @@ Image=ghcr.io/zitadel/zitadel-login:latest
 Network=systemd-caddy-net
 
 Environment=ZITADEL_API_URL=https://id.zehru.com
-Volume=/run/user/1000/secrets/zitadel-login.key:/run/secrets/zitadel-login.key:ro
-Environment=ZITADEL_SERVICE_USER_TOKEN_FILE=/run/secrets/zitadel-login.key
 
 [Service]
 Restart=always
