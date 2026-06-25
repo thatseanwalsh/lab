@@ -71,7 +71,7 @@ id.zehru.com {
 # ── Dashboard (WebUI) ──────────────────────────────────────────────────
 netbird.zehru.com {
   import common_headers
-  reverse_proxy systemd-netbird-dashboard:3000 {
+  reverse_proxy systemd-netbird-dashboard:80 {
     header_up Host {host}
     header_up X-Real-IP {remote_host}
   }
