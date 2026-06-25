@@ -24,7 +24,6 @@ Network=caddy-net.network
 # Named volume for persistent data
 Volume=netbird-data.volume:/var/lib/netbird:Z
 Volume=/etc/netbird/management.json:/etc/netbird/management.json:ro
-Volume=netbird-dashboard-logs.volume:/var/log/nginx:Z
 
 # Security hardening
 SecurityLabelDisable=false
