@@ -303,7 +303,7 @@ sync_rootless_caddy() {
         warn "$validate_output"
       else
         sudo -u core XDG_RUNTIME_DIR=/run/user/1000 \
-          systemctl --user reload caddy-proxy.service 2>/dev/null \
+          systemctl --user restart caddy-proxy.service 2>/dev/null \
           && log "Caddy reloaded gracefully" \
           || warn "Caddy reload failed"
       fi
