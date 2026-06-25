@@ -103,7 +103,7 @@ decrypt_secrets() {
         SOPS_AGE_KEY_FILE="$AGE_KEY" sops --decrypt --input-type dotenv --output-type dotenv "$enc_file" > "$tmp" 2>/dev/null
         decrypt_status=$?
         ;;
-      *.bin.enc)
+      *.key.enc)
         SOPS_AGE_KEY_FILE="$AGE_KEY" sops --decrypt --input-type binary --output-type binary "$enc_file" > "$tmp" 2>/dev/null
         decrypt_status=$?
         ;;
@@ -268,7 +268,7 @@ sync_configs() {
 sync_rootless_caddy() {
   [ "$CORE_SESSION_READY" = true ] || { warn "Skipping rootless Caddyfile sync — core session not ready"; return 0; }
 
-  local src="$REPO_DIR/configs/caddy/Caddyfile"
+  local src="$REPO_DIR/caddy/Caddyfile"
   [ -f "$src" ] || return 0
 
   local dst="/home/core/caddy/Caddyfile"
@@ -279,13 +279,22 @@ sync_rootless_caddy() {
     install -o core -g core -m 644 "$src" "$dst"
     log "Updated rootless Caddyfile"
 
-    if sudo -u core XDG_RUNTIME_DIR=/run/user/1000 systemctl --user is-active caddy-proxy.service &>/dev/null \
-       && sudo -u core XDG_RUNTIME_DIR=/run/user/1000 podman exec caddy-proxy caddy validate --config /etc/caddy/Caddyfile &>/dev/null; then
-      sudo -u core XDG_RUNTIME_DIR=/run/user/1000 systemctl --user reload caddy-proxy.service 2>/dev/null \
-        && log "Caddy reloaded gracefully" \
-        || warn "Caddy reload failed"
+    if sudo -u core XDG_RUNTIME_DIR=/run/user/1000 systemctl --user is-active caddy-proxy.service &>/dev/null; then
+      # validate — ignore warnings, only fail on error level messages
+      local validate_output
+      validate_output=$(sudo -u core XDG_RUNTIME_DIR=/run/user/1000 \
+        podman exec systemd-caddy-proxy caddy validate --config /etc/caddy/Caddyfile 2>&1)
+      if echo "$validate_output" | grep -q '"level":"error"'; then
+        warn "Caddyfile has errors — not reloading"
+        warn "$validate_output"
+      else
+        sudo -u core XDG_RUNTIME_DIR=/run/user/1000 \
+          systemctl --user reload caddy-proxy.service 2>/dev/null \
+          && log "Caddy reloaded gracefully" \
+          || warn "Caddy reload failed"
+      fi
     else
-      warn "Caddyfile validation failed or caddy-proxy unavailable — not reloading"
+      warn "caddy-proxy not active — not reloading"
     fi
   fi
 }
