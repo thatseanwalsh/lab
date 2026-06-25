@@ -54,12 +54,6 @@ id.zehru.com {
     -X-Frame-Options
   }
 
-  handle /ui/v2/* {
-    reverse_proxy systemd-zitadel-login:3000 {
-      header_up Host {host}
-    }
-  }
-
   handle {
     reverse_proxy systemd-zitadel:8080 {
       header_up Host {host}
