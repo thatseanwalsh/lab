@@ -54,13 +54,15 @@ id.zehru.com {
     -X-Frame-Options
   }
 
-  handle {
-    reverse_proxy https://systemd-zitadel:8080 {
-      header_up Host {host}
-      header_up -TE
-      flush_interval -1
-      transport http {
-            tls_insecure_skip_verify
+  reverse_proxy systemd-zitadel:8080 {
+    header_up Host {host}
+    header_up X-Forwarded-Proto https
+    header_up X-Forwarded-Host {host}
+    header_up X-Real-IP {remote}
+    header_up -TE
+    flush_interval -1
+    transport http {
+          tls_insecure_skip_verify
     }
   }
 }
