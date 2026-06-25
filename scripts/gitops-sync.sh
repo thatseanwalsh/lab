@@ -74,15 +74,29 @@ ensure_repo() {
   if [ ! -d "$REPO_DIR/.git" ]; then
     log "Cloning $REPO_URL (branch: $BRANCH)..."
     git clone --depth=1 --branch "$BRANCH" "$REPO_URL" "$REPO_DIR"
-  else
-    BEFORE=$(git_exec rev-parse HEAD)
-    git_exec fetch --depth=1 origin "$BRANCH" 2>&1 | logger -t "$LOG_TAG"
-    git_exec reset --hard "origin/$BRANCH"
-    AFTER=$(git_exec rev-parse HEAD)
-    [ "$BEFORE" = "$AFTER" ] \
-      && log "Repo unchanged at $BEFORE" \
-      || log "Repo updated: $BEFORE → $AFTER"
+    return
   fi
+
+  # Verify repo integrity before doing anything
+  if ! git -C "$REPO_DIR" fsck --no-progress --connectivity-only &>/dev/null; then
+    warn "Repo integrity check failed — nuking and re-cloning"
+    rm -rf "$REPO_DIR"
+    git clone --depth=1 --branch "$BRANCH" "$REPO_URL" "$REPO_DIR"
+    return
+  fi
+
+  BEFORE=$(git_exec rev-parse HEAD)
+  if ! git_exec fetch --depth=1 origin "$BRANCH" 2>&1 | logger -t "$LOG_TAG"; then
+    warn "Fetch failed — nuking and re-cloning"
+    rm -rf "$REPO_DIR"
+    git clone --depth=1 --branch "$BRANCH" "$REPO_URL" "$REPO_DIR"
+    return
+  fi
+  git_exec reset --hard "origin/$BRANCH"
+  AFTER=$(git_exec rev-parse HEAD)
+  [ "$BEFORE" = "$AFTER" ] \
+    && log "Repo unchanged at $BEFORE" \
+    || log "Repo updated: $BEFORE → $AFTER"
 }
 
 decrypt_secrets() {
