@@ -12,8 +12,6 @@ Network=caddy-net.network
 NoNewPrivileges=true
 DropCapability=ALL
 
-User=root
-
 Volume=netbird-dashboard-nginx.volume:/var/lib/nginx:Z
 Volume=netbird-dashboard-tmp.volume:/tmp:Z
 
