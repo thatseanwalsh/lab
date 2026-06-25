@@ -61,9 +61,6 @@ id.zehru.com {
     header_up X-Real-IP {remote}
     header_up -TE
     flush_interval -1
-    transport http {
-          tls_insecure_skip_verify
-    }
   }
 }
 
