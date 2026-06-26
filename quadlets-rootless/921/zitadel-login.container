@@ -6,6 +6,7 @@ Image=ghcr.io/zitadel/zitadel-login:latest
 Network=caddy-net.network
 
 Environment=ZITADEL_API_URL=https://id.zehru.com
+EnvironmentFile=/run/user/1000/secrets/zitadel-login.env
 
 [Service]
 Restart=always
