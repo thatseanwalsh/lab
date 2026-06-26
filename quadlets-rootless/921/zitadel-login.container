@@ -3,7 +3,7 @@ Description=ZITADEL Login UI
 
 [Container]
 Image=ghcr.io/zitadel/zitadel-login:latest
-Network=systemd-caddy-net
+Network=caddy-net.network
 
 Environment=ZITADEL_API_URL=https://id.zehru.com
 
