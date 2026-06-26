@@ -297,7 +297,7 @@ sync_rootless_caddy() {
       # validate — ignore warnings, only fail on error level messages
       local validate_output
       validate_output=$(sudo -u core XDG_RUNTIME_DIR=/run/user/1000 \
-        podman exec systemd-caddy-proxy caddy validate --config /home/core/caddy/Caddyfile 2>&1)
+        podman exec systemd-caddy-proxy caddy validate --config /etc/caddy/Caddyfile 2>&1)
       if echo "$validate_output" | grep -q '"level":"error"'; then
         warn "Caddyfile has errors — not reloading"
         warn "$validate_output"
