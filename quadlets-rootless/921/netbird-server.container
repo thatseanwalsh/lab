@@ -12,7 +12,7 @@ EnvironmentFile=/run/user/1000/secrets/netbird-server.env
 Network=caddy-net.network
 
 Volume=netbird-data.volume:/var/lib/netbird:Z
-Volume=/etc/netbird/config.yaml:/etc/netbird/config.yaml:ro
+Volume=/etc/netbird-server/config.yaml:/etc/netbird/config.yaml:ro
 
 SecurityLabelDisable=false
 ReadOnly=false
