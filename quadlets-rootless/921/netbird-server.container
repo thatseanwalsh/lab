@@ -19,7 +19,7 @@ ReadOnly=false
 NoNewPrivileges=true
 DropCapability=ALL
 
-Exec=combined --config /etc/netbird/config.yaml
+Exec=--config /etc/netbird/config.yaml
 
 [Service]
 Restart=always
