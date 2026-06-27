@@ -258,15 +258,28 @@ sync_rootless_quadlets() {
 # ── Config sync ────────────────────────────────────────────────────────────
 
 sync_configs() {
+  # Load all secrets into env for envsubst
   shopt -s nullglob
+  for env_file in "$SECRETS_DST"/*.env; do
+    source "$env_file"
+  done
 
+  for env_file in "/run/user/1000/secrets"/*.env; do
+    source "$env_file"
+  done
+  
   _deploy_config() {
     local src="$1" dst="$2"
-    if [ "$(install_if_changed "$src" "$dst" 644)" = "changed" ]; then
-      log "Updated config: $dst"
-      # Set SELinux label so podman can bind-mount it
+    mkdir -p "$(dirname "$dst")"
+    local tmp
+    tmp=$(mktemp)
+    envsubst < "$src" > "$tmp"
+    if ! cmp -s "$tmp" "$dst" 2>/dev/null; then
+      install -m 644 "$tmp" "$dst"
       chcon -t container_file_t "$dst" 2>/dev/null || true
+      log "Updated config: $dst"
     fi
+    rm -f "$tmp"
   }
 
   # All-host configs
