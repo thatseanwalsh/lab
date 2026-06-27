@@ -44,36 +44,13 @@
   }
 }
 
-# ── Zitadel Identity Provider ──────────────────────────────────────────
-id.zehru.com {
-  header {
-    Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-    X-Content-Type-Options "nosniff"
-    Referrer-Policy "strict-origin-when-cross-origin"
-    -Server
-    -X-Frame-Options
-  }
-  handle /ui/v2/* {
-    reverse_proxy systemd-zitadel-login:3000
-  }
-  handle {
-    reverse_proxy systemd-zitadel:8080 {
-      header_up Host {host}
-      flush_interval -1
-      transport http {
-        versions h2c
-      }
-    }
-  }
-}
-
 # ── NetBird Dashboard ──────────────────────────────────────────────────
 net.zehru.com {
   @grpc header Content-Type application/grpc*
-  reverse_proxy @grpc h2c://netbird-server:8080
+  reverse_proxy @grpc h2c://systemd-netbird-server:8080
 
   @backend path /relay* /ws-proxy/* /api/* /oauth2/*
-  reverse_proxy @backend netbird-server:8080
+  reverse_proxy @backend systemd-netbird-server:8080
 
   import common_headers
   reverse_proxy systemd-netbird-dashboard:80 {
