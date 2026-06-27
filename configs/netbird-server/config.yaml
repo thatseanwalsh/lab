@@ -1,3 +1,7 @@
+# Keep the comment below in here for gitops-sync
+# envsubst 
+#
+#
 # NetBird Combined Server Configuration
 # Copy this file to config.yaml and customize for your deployment
 #
