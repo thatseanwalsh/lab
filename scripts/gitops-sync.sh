@@ -237,6 +237,22 @@ sync_rootless_quadlets() {
 
   # Host-specific rootless quadlets
   sync_quadlet_dir "$REPO_DIR/quadlets-rootless/$HOSTNAME" "$dst" "ROOTLESS_CHANGED" "core"
+
+  # Remove stale quadlets
+  shopt -s nullglob
+  for f in "$dst"/*.{container,network,volume,pod,kube,image}; do
+    [ -f "$f" ] || continue
+    local base
+    base=$(basename "$f")
+    if [ ! -f "$REPO_DIR/quadlets-rootless/$base" ] && [ ! -f "$REPO_DIR/quadlets-rootless/$HOSTNAME/$base" ]; then
+      local svc="${base%.*}"
+      log "Removing stale rootless quadlet: $base"
+      systemd-run --user --machine=core@ systemctl --user stop "$svc" 2>/dev/null || true
+      rm -f "$f"
+      ROOTLESS_CHANGED+=("$base")
+    fi
+  done
+  shopt -u nullglob
 }
 
 # ── Config sync ────────────────────────────────────────────────────────────
