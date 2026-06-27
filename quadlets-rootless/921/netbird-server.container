@@ -7,7 +7,7 @@ Requires=caddy-net.network netbird-data.volume
 [Container]
 Image=docker.io/netbirdio/netbird-server:latest
 
-EnvironmentFile=/run/user/1000/secrets/netbird.env
+EnvironmentFile=/run/user/1000/secrets/netbird-server.env
 
 Network=caddy-net.network
 
