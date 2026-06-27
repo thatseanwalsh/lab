@@ -67,8 +67,14 @@ id.zehru.com {
   }
 }
 
-# ── Dashboard (WebUI) ──────────────────────────────────────────────────
-netbird.zehru.com {
+# ── NetBird Dashboard ──────────────────────────────────────────────────
+net.zehru.com {
+  @grpc header Content-Type application/grpc*
+  reverse_proxy @grpc h2c://netbird-server:8080
+
+  @backend path /relay* /ws-proxy/* /api/* /oauth2/*
+  reverse_proxy @backend netbird-server:8080
+
   import common_headers
   reverse_proxy systemd-netbird-dashboard:80 {
     header_up Host {host}
@@ -76,27 +82,13 @@ netbird.zehru.com {
   }
 }
 
-# ── Management API (REST + gRPC) ───────────────────────────────────────
-api.zehru.com {
-  import common_headers
-  reverse_proxy systemd-netbird-management:8080 {
-  }
-  @grpc {
-    protocol grpc
-  }
-  reverse_proxy @grpc systemd-netbird-signal:10000 {
-    transport http {
-      versions h2c
-    }
-  }
-}
-
-# ── Signal server ──────────────────────────────────────────────────────
-signal.zehru.com {
-  import common_headers
-  reverse_proxy systemd-netbird-signal:10000 {
-    transport http {
-      versions h2c
-    }
-  }
-}
+# ── NetBird Server (Management + Signal + Relay) ───────────────────────
+#net.zehru.com {
+#  reverse_proxy systemd-netbird-server:8080 {
+#    header_up Host {host}
+#    flush_interval -1
+#    transport http {
+#      versions h2c
+#    }
+#  }
+#}

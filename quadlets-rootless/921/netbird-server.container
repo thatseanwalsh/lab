@@ -1,0 +1,30 @@
+[Unit]
+Description=Netbird Server
+After=network-online.target
+Wants=network-online.target
+Requires=caddy-net.network netbird-data.volume
+
+[Container]
+Image=netbirdio/netbird-server:latest
+
+EnvironmentFile=/run/user/1000/secrets/netbird.env
+
+Network=caddy-net.network
+
+Volume=netbird-data.volume:/var/lib/netbird:Z
+Volume=/etc/netbird/config.yaml:/etc/netbird/config.yaml:ro
+
+SecurityLabelDisable=false
+ReadOnly=false
+NoNewPrivileges=true
+DropCapability=ALL
+
+Exec=start --config /etc/netbird/config.yaml
+
+[Service]
+Restart=always
+RestartSec=10s
+TimeoutStartSec=120
+
+[Install]
+WantedBy=default.target
