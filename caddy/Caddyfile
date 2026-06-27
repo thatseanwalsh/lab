@@ -52,7 +52,6 @@ net.zehru.com {
   @backend path /relay* /ws-proxy/* /api/* /oauth2/*
   reverse_proxy @backend systemd-netbird-server:8080
 
-  import common_headers
   reverse_proxy systemd-netbird-dashboard:80 {
     header_up Host {host}
     header_up X-Real-IP {remote_host}
