@@ -46,7 +46,7 @@ server:
   #    awsRoute53: false
 
   # Shared secret for relay authentication (required when running local relay)
-  # authSecret: "your-secret-key-here"
+  authSecret: "${NB_AUTH_SECRET}"
 
   # Data directory for all services
   dataDir: "/var/lib/netbird/"
