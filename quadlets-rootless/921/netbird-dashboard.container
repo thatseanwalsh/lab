@@ -4,7 +4,7 @@ After=network-online.target
 Wants=network-online.target
 
 [Container]
-Image=netbirdio/dashboard:latest
+Image=docker.io/netbirdio/dashboard:latest
 Network=caddy-net.network
 EnvironmentFile=/run/user/1000/secrets/netbird-dashboard.env
 

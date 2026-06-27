@@ -5,7 +5,7 @@ Wants=network-online.target
 Requires=caddy-net.network netbird-data.volume
 
 [Container]
-Image=netbirdio/netbird-server:latest
+Image=docker.io/netbirdio/netbird-server:latest
 
 EnvironmentFile=/run/user/1000/secrets/netbird.env
 
