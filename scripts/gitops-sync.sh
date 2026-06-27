@@ -261,11 +261,15 @@ sync_configs() {
   # Load all secrets into env for envsubst
   shopt -s nullglob
   for env_file in "$SECRETS_DST"/*.env; do
-    source "$env_file"
+    set -a
+    source <(grep -E '^[A-Z_][A-Z0-9_]*=' "$env_file")
+    set +a
   done
 
   for env_file in "/run/user/1000/secrets"/*.env; do
-    source "$env_file"
+    set -a
+    source <(grep -E '^[A-Z_][A-Z0-9_]*=' "$env_file")
+    set +a
   done
   
   _deploy_config() {
