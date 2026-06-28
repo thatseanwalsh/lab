@@ -25,7 +25,6 @@ jobs:
         with:
           repository: frappe/frappe_docker
           path: frappe_docker
-          sparse-checkout: images/custom/Containerfile
 
       - name: Log in to ghcr.io
         uses: docker/login-action@v3
