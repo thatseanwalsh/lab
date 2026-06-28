@@ -60,7 +60,13 @@ net.zehru.com {
 
 # ── ERPNext ─────────────────────────────────────────────────────────────
 erp.zehru.com {
-  import common_headers
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "SAMEORIGIN"
+    Referrer-Policy "strict-origin-when-cross-origin"
+    -Server
+  }
   reverse_proxy erpnext:8080 {
     header_up Host {host}
     header_up X-Real-IP {remote_host}
