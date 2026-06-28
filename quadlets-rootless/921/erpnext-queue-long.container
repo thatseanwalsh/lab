@@ -3,7 +3,7 @@ Description=ERPNext Queue Long
 After=erpnext-configurator.service
 
 [Container]
-Image=docker.io/frappe/erpnext:v16
+Image=ghcr.io/thatseanwalsh/erpnext-custom:v16
 ContainerName=erpnext-queue-long
 Pod=erpnext.pod
 Exec=bench worker --queue long,default,short

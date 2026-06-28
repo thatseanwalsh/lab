@@ -3,7 +3,7 @@ Description=ERPNext Configurator
 After=erpnext-mariadb.service erpnext-redis-cache.service erpnext-redis-queue.service
 
 [Container]
-Image=docker.io/frappe/erpnext:v16
+Image=ghcr.io/thatseanwalsh/erpnext-custom:v16
 ContainerName=erpnext-configurator
 Pod=erpnext.pod
 

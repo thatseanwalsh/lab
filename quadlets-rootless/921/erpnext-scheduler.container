@@ -3,7 +3,7 @@ Description=ERPNext Scheduler
 After=erpnext-configurator.service
 
 [Container]
-Image=docker.io/frappe/erpnext:v16
+Image=ghcr.io/thatseanwalsh/erpnext-custom:v16
 ContainerName=erpnext-scheduler
 Pod=erpnext.pod
 Exec=bench schedule

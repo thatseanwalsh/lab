@@ -3,7 +3,7 @@ Description=ERPNext Backend
 After=erpnext-configurator.service
 
 [Container]
-Image=docker.io/frappe/erpnext:v16
+Image=ghcr.io/thatseanwalsh/erpnext-custom:v16
 ContainerName=erpnext-backend
 Pod=erpnext.pod
 

@@ -3,7 +3,7 @@ Description=ERPNext Websocket
 After=erpnext-configurator.service
 
 [Container]
-Image=docker.io/frappe/erpnext:v16
+Image=ghcr.io/thatseanwalsh/erpnext-custom:v16
 ContainerName=erpnext-websocket
 Pod=erpnext.pod
 Exec=node /home/frappe/frappe-bench/apps/frappe/socketio.js
