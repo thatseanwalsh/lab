@@ -1,4 +1,4 @@
-FROM ghcr.io/frappe/erpnext:v16
+FROM docker.io/frappe/erpnext:v16
 
 WORKDIR /home/frappe/frappe-bench
 
