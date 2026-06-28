@@ -7,7 +7,6 @@ Image=docker.io/frappe/erpnext:v16
 ContainerName=erpnext-frontend
 Pod=erpnext.pod
 Exec=nginx-entrypoint.sh
-Network=caddy-net
 
 Environment=BACKEND=127.0.0.1:8000
 Environment=SOCKETIO=127.0.0.1:9000
