@@ -149,7 +149,7 @@
         "path": "/etc/sysctl.d/99-hardening.conf",
         "contents": {
           "compression": "gzip",
-          "source": "data:;base64,H4sIAAAAAAAC/3TNQYrDMAyF4X1O4ROYzFBKNzmLMLIchFVbyEqgty8thaSLrr9feo08su6XiL2VmESiKRQWJwtL+Ju+PVNJm/ivxlFhPBr2XpnG2a7H/4RI6mApLGGeKlkjiflOYwWj4cbo78uPVHU7w/8xxwpbU+OdhVbKoN0chid7dbd5egYAAP//9hB8MNwAAAA="
+          "source": "data:;base64,H4sIAAAAAAAC/2yPUQrCMAyG33uKnqBsIuJLzxJKm43Qrg1pNvD2MpU5wefv+/mSiuqIt6uLrU4u4RTWok4YJiqKYr0dzeFoZOiPGlvLhP3Mbu99KMWFGJEVJFhvB5NRKhaXFuwzCHYVivpafkhmlTO4fHPEsFYW2qjgjAm4iULXILt3H8zv7Xu7S4QtFEqwBMl+/KMcr/nBPAMAAP//crRK5/0AAAA="
         },
         "mode": 420
       },

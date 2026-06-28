@@ -104,7 +104,7 @@ storage:
       contents:
         inline: |
           core:100000:65536
-          
+
     # ── nftables───────────────────────────────────────────────────────────
     - path: /etc/sysconfig/nftables.conf
       mode: 0644
@@ -154,13 +154,14 @@ storage:
       mode: 0644
       contents:
         inline: |
-          net.ipv4.conf.all.rp_filter = 1
           net.ipv4.conf.default.rp_filter = 1
           net.ipv4.tcp_syncookies = 1
           net.ipv6.conf.all.accept_ra = 0
           kernel.dmesg_restrict = 1
           kernel.kptr_restrict = 2
           net.ipv4.ip_unprivileged_port_start = 80
+          net.ipv4.conf.all.src_valid_mark=1
+          net.ipv4.conf.all.rp_filter=0
 
     # ── /run/secrets tmpfs (backup — also created by systemd .mount unit) ─
     - path: /etc/systemd/system/run-secrets.mount

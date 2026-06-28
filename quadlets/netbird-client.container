@@ -14,9 +14,6 @@ AddCapability=SYS_RESOURCE
 AddCapability=NET_RAW
 AddDevice=/dev/net/tun
 
-Sysctl=net.ipv4.conf.all.src_valid_mark=1
-Sysctl=net.ipv4.conf.all.rp_filter=0
-
 # Management server
 Environment=NB_MANAGEMENT_URL=https://net.zehru.com
 EnvironmentFile=/run/secrets/netbird-client.env
