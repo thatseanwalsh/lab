@@ -1,6 +1,6 @@
 [Unit]
 Description=ERPNext Websocket
-After=erpnext-configurator.service
+After=erpnext-backend.service
 
 [Container]
 Image=ghcr.io/thatseanwalsh/erpnext-custom:v16
