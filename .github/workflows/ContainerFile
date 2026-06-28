@@ -1,0 +1,12 @@
+FROM ghcr.io/frappe/erpnext:v16
+
+WORKDIR /home/frappe/frappe-bench
+
+RUN bench get-app --branch version-16 https://github.com/frappe/hrms \
+    && bench get-app --branch main https://github.com/frappe/helpdesk \
+    && bench get-app --branch main https://github.com/frappe/crm \
+    && bench get-app --branch master https://github.com/frappe/builder \
+    && bench get-app --branch master https://github.com/frappe/wiki \
+    && bench get-app --branch main https://github.com/frappe/insights \
+    && bench get-app --branch main https://github.com/frappe/lms \
+    && bench build --production
