@@ -4,7 +4,7 @@ After=network-online.target
 Wants=network-online.target
 
 [Container]
-Image=netbirdio/netbird:latest
+Image=docker.io/netbirdio/netbird:latest
 ContainerName=netbird-client
 HostName=%H
 
