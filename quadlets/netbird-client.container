@@ -1,0 +1,30 @@
+[Unit]
+Description=Netbird Client
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image=netbirdio/netbird:latest
+ContainerName=netbird-client
+HostName=%H
+
+# Capabilities needed for VPN tunnel
+AddCapability=NET_ADMIN
+AddCapability=SYS_RESOURCE
+AddDevice=/dev/net/tun
+
+# Management server
+Environment=NB_MANAGEMENT_URL=https://net.zehru.com
+EnvironmentFile=/run/secrets/netbird-client.env
+
+# Persist state across restarts
+Volume=netbird-client.volume:/etc/netbird:Z
+
+Network=host
+
+[Service]
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

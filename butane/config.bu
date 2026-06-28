@@ -104,8 +104,9 @@ storage:
       contents:
         inline: |
           core:100000:65536
+          
     # ── nftables───────────────────────────────────────────────────────────
-    - path: /etc/nftables.conf
+    - path: /etc/sysconfig/nftables.conf
       mode: 0644
       contents:
         inline: |
@@ -118,7 +119,6 @@ storage:
               ip protocol icmp accept
               tcp dport { 22, 80, 443 } accept
               udp dport { 443, 3478 } accept
-              udp dport 49152-65535 accept
             }
             chain forward {
               type filter hook forward priority 0; policy drop;

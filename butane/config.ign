@@ -114,10 +114,10 @@
         "mode": 420
       },
       {
-        "path": "/etc/nftables.conf",
+        "path": "/etc/sysconfig/nftables.conf",
         "contents": {
           "compression": "gzip",
-          "source": "data:;base64,H4sIAAAAAAAC/3yQYW6DMAyF//cU7wBM6iCwTj1NlhhhLcNWMNtQxd2n0Xa00srP5Pv8bD3zb4nAPRlaTkYZpx0QOs89uNfRljdgk9LV6ETeL1AzS2absD9CJXGYELPocZkJhsG8EWj4XcNDR7HIlLxRhA+B1BaPuUWSux9t0NO3dTGDw4d+NvcUmsUkSFroLbOgiCrZcEJZFjjsCzhXYb6VxrhKzlUFKvdyeKS41+e6fGrquqpXYf4rqZX85XN8VNMVbxS1ZsloG41f6D9J57POWfPuJwAA//+Sadtw0wEAAA=="
+          "source": "data:;base64,H4sIAAAAAAAC/3yQ0WrDMAxF3/sV9wPyUBrTFfo1nq0QMS8SirItlPz7mNuuKWx5tM/RlbgeXwuBB3J0XJwMlx2Q+sgDeNDJ6xvwWelu9CJvN6jGYuwz9meoFE4zsome60xyjB6dQOPPGh57yo1RiU4ZMSVSrx5zhyJPP3rEQF/eZwOnd/04PlOoiUuSUumaeVJkFXNccDg0OO0bhNBiWUtTfkghtA3a8HJaK8tvB53YZ7T8Xwt3vNHDI0sm3yj0Rv9Iup51zVp23wEAAP//1OjPcbIBAAA="
         },
         "mode": 420
       },
