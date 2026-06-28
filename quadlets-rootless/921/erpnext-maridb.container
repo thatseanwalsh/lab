@@ -7,10 +7,10 @@ Image=docker.io/mariadb:10.6
 ContainerName=erpnext-mariadb
 Pod=erpnext.pod
 
-Environment=MYSQL_ROOT_PASSWORD=${DB_PASSWORD}
-Environment=MYSQL_DATABASE=erpnext
-Environment=MYSQL_USER=frappe
-Environment=MYSQL_PASSWORD=${DB_PASSWORD}
+Environment=MARIADB_ROOT_PASSWORD=${DB_PASSWORD}
+Environment=MARIADB_DATABASE=erpnext
+Environment=MARIADB_USER=frappe
+Environment=MARIADB_PASSWORD=${DB_PASSWORD}
 
 Volume=erpnext-mariadb.volume:/var/lib/mysql:Z
 
