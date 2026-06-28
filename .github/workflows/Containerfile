@@ -12,10 +12,4 @@ RUN bench get-app --branch version-16 --skip-assets https://github.com/frappe/hr
     && echo '{"socketio_port": 9000}' > sites/common_site_config.json \
     && bench build --production \
     && rm sites/common_site_config.json \
-    && mkdir -p sites/assets \
-    && bench setup nginx --yes 2>/dev/null || true \
-    && cp -rT apps/frappe/frappe/public sites/assets/frappe \
-    && cp -rT apps/erpnext/erpnext/public sites/assets/erpnext \
-    && cp -rT apps/hrms/hrms/public sites/assets/hrms \
-    && cp -rT apps/wiki/wiki/public sites/assets/wiki \
-    && cp -rT apps/lms/lms/public sites/assets/lms
+    && bench setup nginx --yes 2>/dev/null || true
