@@ -61,7 +61,7 @@ net.zehru.com {
 # ── ERPNext ─────────────────────────────────────────────────────────────
 erp.zehru.com {
   import common_headers
-  reverse_proxy systemd-erpnext-infra:8080 {
+  reverse_proxy erpnext-infra:8080 {
     header_up Host {host}
     header_up X-Real-IP {remote_host}
     flush_interval -1
