@@ -1,0 +1,15 @@
+[Unit]
+Description=ERPNext Redis Cache
+After=erpnext-pod.service
+
+[Container]
+Image=docker.io/redis:alpine
+ContainerName=erpnext-redis-cache
+Pod=erpnext.pod
+
+[Service]
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,6 @@
+[Pod]
+PodName=erpnext
+Network=erpnext.network
+
+[Install]
+WantedBy=default.target

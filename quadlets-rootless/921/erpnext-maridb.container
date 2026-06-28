@@ -1,0 +1,24 @@
+[Unit]
+Description=ERPNext MariaDB
+After=erpnext-pod.service
+
+[Container]
+Image=docker.io/mariadb:10.6
+ContainerName=erpnext-mariadb
+Pod=erpnext.pod
+
+Environment=MYSQL_ROOT_PASSWORD=${DB_PASSWORD}
+Environment=MYSQL_DATABASE=erpnext
+Environment=MYSQL_USER=frappe
+Environment=MYSQL_PASSWORD=${DB_PASSWORD}
+
+Volume=erpnext-mariadb.volume:/var/lib/mysql:Z
+
+EnvironmentFile=/run/user/1000/secrets/erpnext.env
+
+[Service]
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

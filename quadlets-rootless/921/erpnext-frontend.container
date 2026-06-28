@@ -1,0 +1,29 @@
+[Unit]
+Description=ERPNext Frontend
+After=erpnext-backend.service erpnext-websocket.service
+
+[Container]
+Image=docker.io/frappe/erpnext:v16
+ContainerName=erpnext-frontend
+Pod=erpnext.pod
+Exec=nginx-entrypoint.sh
+
+Environment=BACKEND=127.0.0.1:8000
+Environment=SOCKETIO=127.0.0.1:9000
+Environment=FRAPPE_SITE_NAME_HEADER=erp.zehru.com
+Environment=UPSTREAM_REAL_IP_ADDRESS=127.0.0.1
+Environment=UPSTREAM_REAL_IP_HEADER=X-Forwarded-For
+Environment=UPSTREAM_REAL_IP_RECURSIVE=off
+Environment=PROXY_READ_TIMEOUT=120
+Environment=CLIENT_MAX_BODY_SIZE=50m
+
+Volume=erpnext-sites.volume:/home/frappe/frappe-bench/sites:Z
+
+EnvironmentFile=/run/user/1000/secrets/erpnext.env
+
+[Service]
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,20 @@
+[Unit]
+Description=ERPNext Scheduler
+After=erpnext-configurator.service
+
+[Container]
+Image=docker.io/frappe/erpnext:v16
+ContainerName=erpnext-scheduler
+Pod=erpnext.pod
+Exec=bench schedule
+
+Volume=erpnext-sites.volume:/home/frappe/frappe-bench/sites:Z
+
+EnvironmentFile=/run/user/1000/secrets/erpnext.env
+
+[Service]
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

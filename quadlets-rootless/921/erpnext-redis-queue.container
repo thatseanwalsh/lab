@@ -1,0 +1,17 @@
+[Unit]
+Description=ERPNext Redis Queue
+After=erpnext-pod.service
+
+[Container]
+Image=docker.io/redis:alpine
+ContainerName=erpnext-redis-queue
+Pod=erpnext.pod
+
+Exec=redis-server --port 6380
+
+[Service]
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target
