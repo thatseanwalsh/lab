@@ -64,6 +64,7 @@ erp.zehru.com {
   reverse_proxy erpnext:8080 {
     header_up Host {host}
     header_up X-Real-IP {remote_host}
+    header_down -Content-Encoding
     flush_interval -1
   }
 }
