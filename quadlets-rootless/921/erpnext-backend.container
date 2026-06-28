@@ -7,7 +7,7 @@ Image=ghcr.io/thatseanwalsh/erpnext-custom:v16
 ContainerName=erpnext-backend
 Pod=erpnext.pod
 
-Volume=erpnext-sites.volume:/home/frappe/frappe-bench/sites:Z
+Volume=erpnext-sites.volume:/home/frappe/frappe-bench/sites:z
 
 EnvironmentFile=/run/user/1000/secrets/erpnext.env
 

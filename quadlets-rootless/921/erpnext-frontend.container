@@ -17,7 +17,7 @@ Environment=UPSTREAM_REAL_IP_RECURSIVE=off
 Environment=PROXY_READ_TIMEOUT=120
 Environment=CLIENT_MAX_BODY_SIZE=50m
 
-Volume=erpnext-sites.volume:/home/frappe/frappe-bench/sites:Z
+Volume=erpnext-sites.volume:/home/frappe/frappe-bench/sites:z
 
 EnvironmentFile=/run/user/1000/secrets/erpnext.env
 
