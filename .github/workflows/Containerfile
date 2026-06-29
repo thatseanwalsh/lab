@@ -12,4 +12,11 @@ RUN bench get-app --branch version-16 --skip-assets https://github.com/frappe/hr
     && echo '{"socketio_port": 9000}' > sites/common_site_config.json \
     && bench build --production \
     && rm sites/common_site_config.json \
-    && bench setup nginx --yes 2>/dev/null || true
+    && bench setup nginx --yes 2>/dev/null || true \
+    && for link in sites/assets/*/; do \
+         if [ -L "${link%/}" ]; then \
+           real=$(readlink -f "${link%/}"); \
+           rm "${link%/}"; \
+           cp -r "$real" "${link%/}"; \
+         fi; \
+       done
