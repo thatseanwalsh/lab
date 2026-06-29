@@ -12,13 +12,8 @@ RUN bench get-app --branch version-16 --skip-assets https://github.com/frappe/hr
     && bench get-app --branch main --skip-assets https://github.com/frappe/insights \
     && bench get-app --branch main --skip-assets https://github.com/frappe/lms \
     && echo '{"socketio_port": 9000}' > sites/common_site_config.json \
+    && mkdir -p assets \
+    && rm -rf sites/assets \
+    && ln -s /home/frappe/frappe-bench/assets sites/assets \
     && bench build --production \
-    && rm sites/common_site_config.json \
-    && bench setup nginx --yes 2>/dev/null || true \
-    && for link in sites/assets/*/; do \
-         if [ -L "${link%/}" ]; then \
-           real=$(readlink -f "${link%/}"); \
-           rm "${link%/}"; \
-           cp -r "$real" "${link%/}"; \
-         fi; \
-       done
+    && rm sites/common_site_config.json
